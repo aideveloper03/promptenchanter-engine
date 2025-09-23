@@ -14,8 +14,6 @@ from app.config.settings import get_settings
 from app.utils.logger import setup_logging, get_logger
 from app.utils.cache import cache_manager
 from app.models.schemas import ErrorResponse
-from app.database.models import db_manager
-from app.services.message_logging_service import message_logging_service, daily_reset_service
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -26,33 +24,20 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     
     # Startup
-    logger.info("Starting PromptEnchanter with User Management...")
+    logger.info("Starting PromptEnchanter...")
     
     # Setup logging
     setup_logging()
     
-    # Initialize database
-    logger.info("Initializing user management database...")
-    
     # Connect to cache
     await cache_manager.connect()
     
-    # Initialize services
-    logger.info("Initializing message logging service...")
-    logger.info("Initializing daily reset service...")
-    
-    logger.info("PromptEnchanter started successfully with full user management")
+    logger.info("PromptEnchanter started successfully")
     
     yield
     
     # Shutdown
     logger.info("Shutting down PromptEnchanter...")
-    
-    # Shutdown message logging service
-    message_logging_service.shutdown()
-    
-    # Close database connections
-    db_manager.close()
     
     # Disconnect from cache
     await cache_manager.disconnect()
