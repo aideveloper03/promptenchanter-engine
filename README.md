@@ -9,8 +9,18 @@
 - **Prompt Engineering Styles**: Support for multiple prompt engineering methodologies
 - **AI Deep Research**: Internet-powered research with multi-source content synthesis
 - **Batch Processing**: Efficient processing of multiple prompts with parallel execution
-- **Enterprise Security**: API key authentication, rate limiting, and request logging
+- **Enterprise Security**: Comprehensive security with encryption, firewall, and audit logging
 - **Intelligent Caching**: Redis-based caching for responses and research results
+
+### 🆕 User Management System
+- **User Registration & Authentication**: Secure user accounts with session management
+- **API Key Management**: Unique API keys for each user with regeneration capabilities
+- **Credit System**: Conversation credits with automatic daily resets
+- **Admin Panel**: Full administrative control over users and system
+- **Support Staff System**: Role-based support staff (new/support/advanced levels)
+- **Security Features**: IP whitelisting, firewall, failed attempt tracking
+- **Message Logging**: High-performance batch logging of all conversations
+- **Data Encryption**: Sensitive data encrypted at rest and in transit
 
 ### Prompt Engineering Styles (r_type)
 - **BPE** (`bpe`): Basic Prompt Engineering - Clear, structured responses
@@ -51,7 +61,13 @@
    # Edit .env with your configuration
    ```
 
-4. **Start Redis (optional but recommended)**
+4. **Initialize database and create admin**
+   ```bash
+   # Create the first admin user
+   python scripts/create_admin.py
+   ```
+
+5. **Start Redis (optional but recommended)**
    ```bash
    # Using Docker
    docker run -d -p 6379:6379 redis:alpine
@@ -69,9 +85,12 @@ Create a `.env` file with the following variables:
 
 ```env
 # PromptEnchanter Configuration
-API_KEY=sk-78912903
+API_KEY=sk-78912903  # Legacy - for backward compatibility
 WAPI_URL=https://api-server02.webraft.in/v1/chat/completions
 WAPI_KEY=sk-Xf6CNfK8A4bCmoRAE8pBRCKyEJrJKigjlVlqCtf07AZmpije
+
+# Database Configuration
+DATABASE_URL=sqlite+aiosqlite:///./promptenchanter.db
 
 # Redis Configuration
 REDIS_URL=redis://localhost:6379/0
@@ -85,6 +104,25 @@ LOG_LEVEL=INFO
 # Security
 SECRET_KEY=your-secret-key-here-change-this-in-production
 ALGORITHM=HS256
+
+# User Management
+USER_REGISTRATION_ENABLED=true
+EMAIL_VERIFICATION_ENABLED=false
+IP_WHITELIST_ENABLED=false
+FIREWALL_ENABLED=true
+
+# Session Settings
+SESSION_DURATION_HOURS=24
+REFRESH_TOKEN_DURATION_DAYS=30
+
+# Message Logging
+MESSAGE_LOGGING_ENABLED=true
+MESSAGE_BATCH_SIZE=50
+MESSAGE_FLUSH_INTERVAL_SECONDS=600
+
+# Credit Management
+AUTO_CREDIT_RESET_ENABLED=true
+DAILY_USAGE_RESET_HOUR=0
 
 # Rate Limiting
 RATE_LIMIT_REQUESTS_PER_MINUTE=100
@@ -141,10 +179,35 @@ Once running, visit:
 
 ### Authentication
 
-All API endpoints require Bearer token authentication:
+#### User Registration & Login
+
+New users must register and obtain an API key:
 
 ```bash
-Authorization: Bearer sk-78912903
+# Register new user
+curl -X POST "https://api.promptenchanter.net/v1/users/register" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "johndoe",
+    "name": "John Doe", 
+    "email": "john@example.com",
+    "password": "SecurePass123"
+  }'
+
+# Response includes API key
+{
+  "api_key": "pe-rqrFLve5ZM63ZL1XtREaiLrlrNreu20Y",
+  "user_id": 1,
+  "username": "johndoe"
+}
+```
+
+#### API Authentication
+
+All API endpoints require Bearer token authentication with user API key:
+
+```bash
+Authorization: Bearer pe-rqrFLve5ZM63ZL1XtREaiLrlrNreu20Y
 ```
 
 ## 🔧 API Usage Examples
@@ -154,7 +217,7 @@ Authorization: Bearer sk-78912903
 ```bash
 curl https://api.promptenchanter.net/v1/prompt/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer sk-78912903" \
+  -H "Authorization: Bearer pe-rqrFLve5ZM63ZL1XtREaiLrlrNreu20Y" \
   -d '{
     "level": "medium",
     "messages": [
@@ -173,7 +236,7 @@ curl https://api.promptenchanter.net/v1/prompt/completions \
 ```bash
 curl https://api.promptenchanter.net/v1/prompt/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer sk-78912903" \
+  -H "Authorization: Bearer pe-rqrFLve5ZM63ZL1XtREaiLrlrNreu20Y" \
   -d '{
     "level": "high",
     "messages": [
@@ -194,7 +257,7 @@ curl https://api.promptenchanter.net/v1/prompt/completions \
 ```bash
 curl https://api.promptenchanter.net/v1/batch/process \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer sk-78912903" \
+  -H "Authorization: Bearer pe-rqrFLve5ZM63ZL1XtREaiLrlrNreu20Y" \
   -d '{
     "batch": [
       {
@@ -228,7 +291,7 @@ curl https://api.promptenchanter.net/v1/admin/system-prompts \
 # Update System Prompt
 curl -X PUT https://api.promptenchanter.net/v1/admin/system-prompts \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer sk-78912903" \
+  -H "Authorization: Bearer pe-rqrFLve5ZM63ZL1XtREaiLrlrNreu20Y" \
   -d '{
     "r_type": "custom",
     "prompt": "You are a specialized AI assistant..."
@@ -368,7 +431,48 @@ For support and questions:
 - Verify Redis connectivity
 - Check WAPI endpoint accessibility
 
+## 📚 Documentation
+
+- **[User Management Guide](docs/USER_MANAGEMENT_GUIDE.md)** - Comprehensive guide to the user management system
+- **[API Guide](docs/API_GUIDE.md)** - Detailed API documentation
+- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Production deployment instructions
+
+## 🆕 What's New in v2.0.0
+
+### User Management System
+- **Complete user registration and authentication system**
+- **API key management with secure generation and regeneration**
+- **Credit-based usage system with automatic daily resets**
+- **Session management with refresh tokens**
+
+### Admin & Support Features
+- **Full admin panel for user and system management**
+- **Role-based support staff system (new/support/advanced levels)**
+- **Comprehensive user profile management**
+- **Account deletion with data archiving**
+
+### Security Enhancements
+- **Advanced firewall with IP-based blocking and whitelisting**
+- **Data encryption for sensitive information**
+- **Failed attempt tracking and account lockouts**
+- **Comprehensive security event logging**
+
+### Performance & Monitoring
+- **High-performance message logging with batch processing**
+- **API usage tracking and analytics**
+- **System health monitoring**
+- **Automated credit reset service**
+
 ## 🔄 Version History
+
+### v2.0.0
+- **🆕 Complete user management system**
+- **🆕 Admin panel and support staff roles**
+- **🆕 Advanced security features (firewall, encryption, IP whitelisting)**
+- **🆕 High-performance message logging**
+- **🆕 Credit system with automatic resets**
+- **🆕 API key authentication for all endpoints**
+- Enhanced documentation and setup scripts
 
 ### v1.0.0
 - Initial release
