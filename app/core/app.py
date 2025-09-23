@@ -29,8 +29,24 @@ async def lifespan(app: FastAPI):
     # Setup logging
     setup_logging()
     
+    # Initialize database
+    from app.database.database import init_database
+    await init_database()
+    logger.info("Database initialized")
+    
     # Connect to cache
     await cache_manager.connect()
+    
+    # Start message logging service
+    from app.services.message_logging_service import message_logging_service
+    await message_logging_service.start()
+    logger.info("Message logging service started")
+    
+    # Start credit reset service
+    from app.services.credit_reset_service import credit_reset_service
+    if settings.auto_credit_reset_enabled:
+        await credit_reset_service.start()
+        logger.info("Credit reset service started")
     
     logger.info("PromptEnchanter started successfully")
     
@@ -39,8 +55,20 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Shutting down PromptEnchanter...")
     
+    # Stop credit reset service
+    from app.services.credit_reset_service import credit_reset_service
+    await credit_reset_service.stop()
+    
+    # Stop message logging service
+    from app.services.message_logging_service import message_logging_service
+    await message_logging_service.stop()
+    
     # Disconnect from cache
     await cache_manager.disconnect()
+    
+    # Close database connections
+    from app.database.database import close_database
+    await close_database()
     
     logger.info("PromptEnchanter shut down successfully")
 
@@ -89,6 +117,10 @@ def create_application() -> FastAPI:
     # Add custom middleware
     app.add_middleware(LoggingMiddleware)
     app.add_middleware(RequestContextMiddleware)
+    
+    # Add firewall middleware
+    from app.security.firewall import firewall_manager, FirewallMiddleware
+    app.add_middleware(FirewallMiddleware, firewall_manager=firewall_manager)
     
     # Add rate limiting
     app.state.limiter = limiter

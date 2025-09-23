@@ -47,7 +47,7 @@ You may be provided with additional information about topic fetched from Interne
 
 """
 class Settings(BaseSettings):
-    # API Configuration
+    # API Configuration (Legacy - for backward compatibility)
     api_key: str = Field(default="sk-78912903", env="API_KEY")
     wapi_url: str = Field(default="https://api-server02.webraft.in/v1/chat/completions", env="WAPI_URL")
     wapi_key: str = Field(default="sk-Xf6CNfK8A4bCmoRAE8pBRCKyEJrJKigjlVlqCtf07AZmpije", env="WAPI_KEY")
@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     # Security
     secret_key: str = Field(default="your-secret-key-change-in-production", env="SECRET_KEY")
     algorithm: str = Field(default="HS256", env="ALGORITHM")
+    
+    # Database Configuration
+    database_url: str = Field(default="sqlite+aiosqlite:///./promptenchanter.db", env="DATABASE_URL")
     
     # Redis Configuration
     redis_url: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
@@ -76,6 +79,48 @@ class Settings(BaseSettings):
     # Concurrency Settings
     max_concurrent_requests: int = Field(default=50, env="MAX_CONCURRENT_REQUESTS")
     batch_max_parallel_tasks: int = Field(default=10, env="BATCH_MAX_PARALLEL_TASKS")
+    
+    # User Management Settings
+    user_registration_enabled: bool = Field(default=True, env="USER_REGISTRATION_ENABLED")
+    email_verification_enabled: bool = Field(default=False, env="EMAIL_VERIFICATION_ENABLED")
+    default_user_credits: Dict[str, int] = Field(default={"main": 5, "reset": 5})
+    default_user_limits: Dict[str, int] = Field(default={"conversation_limit": 10, "reset": 10})
+    default_user_access_rtype: List[str] = Field(default=["bpe", "tot"])
+    default_user_level: str = Field(default="low")
+    
+    # Security Settings
+    ip_whitelist_enabled: bool = Field(default=False, env="IP_WHITELIST_ENABLED")
+    firewall_enabled: bool = Field(default=True, env="FIREWALL_ENABLED")
+    max_failed_login_attempts: int = Field(default=5, env="MAX_FAILED_LOGIN_ATTEMPTS")
+    account_lockout_duration_hours: int = Field(default=1, env="ACCOUNT_LOCKOUT_DURATION_HOURS")
+    
+    # Session Settings
+    session_duration_hours: int = Field(default=24, env="SESSION_DURATION_HOURS")
+    refresh_token_duration_days: int = Field(default=30, env="REFRESH_TOKEN_DURATION_DAYS")
+    admin_session_duration_hours: int = Field(default=24, env="ADMIN_SESSION_DURATION_HOURS")
+    support_session_duration_hours: int = Field(default=12, env="SUPPORT_SESSION_DURATION_HOURS")
+    
+    # Message Logging Settings
+    message_logging_enabled: bool = Field(default=True, env="MESSAGE_LOGGING_ENABLED")
+    message_batch_size: int = Field(default=50, env="MESSAGE_BATCH_SIZE")
+    message_flush_interval_seconds: int = Field(default=600, env="MESSAGE_FLUSH_INTERVAL_SECONDS")
+    message_max_queue_size: int = Field(default=1000, env="MESSAGE_MAX_QUEUE_SIZE")
+    
+    # Email Settings (for future email verification)
+    smtp_host: str = Field(default="", env="SMTP_HOST")
+    smtp_port: int = Field(default=587, env="SMTP_PORT")
+    smtp_username: str = Field(default="", env="SMTP_USERNAME")
+    smtp_password: str = Field(default="", env="SMTP_PASSWORD")
+    smtp_use_tls: bool = Field(default=True, env="SMTP_USE_TLS")
+    from_email: str = Field(default="noreply@promptenchanter.com", env="FROM_EMAIL")
+    
+    # API Usage Monitoring
+    api_usage_tracking_enabled: bool = Field(default=True, env="API_USAGE_TRACKING_ENABLED")
+    daily_usage_reset_hour: int = Field(default=0, env="DAILY_USAGE_RESET_HOUR")  # UTC hour for daily reset
+    
+    # Advanced Features
+    research_enabled_by_default: bool = Field(default=True, env="RESEARCH_ENABLED_BY_DEFAULT")
+    auto_credit_reset_enabled: bool = Field(default=True, env="AUTO_CREDIT_RESET_ENABLED")
     
     # Model Mapping
     level_model_mapping: Dict[str, str] = {
