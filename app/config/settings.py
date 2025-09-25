@@ -48,9 +48,9 @@ You may be provided with additional information about topic fetched from Interne
 """
 class Settings(BaseSettings):
     # API Configuration (Legacy - for backward compatibility)
-    api_key: str = Field(default="sk-78912903", env="API_KEY")
-    wapi_url: str = Field(default="https://api-server02.webraft.in/v1/chat/completions", env="WAPI_URL")
-    wapi_key: str = Field(default="sk-Xf6CNfK8A4bCmoRAE8pBRCKyEJrJKigjlVlqCtf07AZmpije", env="WAPI_KEY")
+    api_key: str = Field(default="", env="API_KEY")
+    wapi_url: str = Field(default="", env="WAPI_URL")
+    wapi_key: str = Field(default="", env="WAPI_KEY")
     
     # Server Configuration
     host: str = Field(default="0.0.0.0", env="HOST")
@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
     
     # Security
-    secret_key: str = Field(default="your-secret-key-change-in-production", env="SECRET_KEY")
+    secret_key: str = Field(default="", env="SECRET_KEY")
     algorithm: str = Field(default="HS256", env="ALGORITHM")
     
     # Database Configuration

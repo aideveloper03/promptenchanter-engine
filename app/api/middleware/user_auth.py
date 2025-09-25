@@ -1,7 +1,7 @@
 """
 User authentication middleware for API endpoints
 """
-from fastapi import Request, HTTPException, status
+from fastapi import Request, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Tuple
@@ -137,17 +137,13 @@ class UserAuthenticationMiddleware:
 # Dependency for API authentication
 async def authenticate_api_user(
     request: Request,
-    session: AsyncSession = None
+    session: AsyncSession = Depends(get_db_session)
 ) -> User:
     """
     Dependency to authenticate API user and check conversation limits
     """
     
-    if session is None:
-        async for db_session in get_db_session():
-            return await _authenticate_api_user_impl(request, db_session)
-    else:
-        return await _authenticate_api_user_impl(request, session)
+    return await _authenticate_api_user_impl(request, session)
 
 
 async def _authenticate_api_user_impl(request: Request, session: AsyncSession) -> User:
@@ -200,17 +196,13 @@ async def _authenticate_api_user_impl(request: Request, session: AsyncSession) -
 # Dependency for API authentication without credit check (for admin endpoints)
 async def authenticate_api_user_no_credit_check(
     request: Request,
-    session: AsyncSession = None
+    session: AsyncSession = Depends(get_db_session)
 ) -> User:
     """
     Dependency to authenticate API user without checking conversation limits
     """
     
-    if session is None:
-        async for db_session in get_db_session():
-            return await _authenticate_api_user_no_credit_check_impl(request, db_session)
-    else:
-        return await _authenticate_api_user_no_credit_check_impl(request, session)
+    return await _authenticate_api_user_no_credit_check_impl(request, session)
 
 
 async def _authenticate_api_user_no_credit_check_impl(request: Request, session: AsyncSession) -> User:

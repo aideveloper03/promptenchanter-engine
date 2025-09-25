@@ -3,16 +3,39 @@ Admin endpoints for PromptEnchanter
 """
 from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.database.database import get_db_session
+from app.database.models import Admin
 from app.models.schemas import SystemPromptUpdate, AdminResponse, ErrorResponse, HealthResponse
 from app.config.settings import get_system_prompts_manager
 from app.api.v1.deps.common import get_secure_request_logger
 from app.utils.logger import RequestLogger
 from app.utils.cache import cache_manager
 from app.services.wapi_client import wapi_client
+from app.services.admin_service import admin_service
 import time
 
 router = APIRouter()
 system_prompts_manager = get_system_prompts_manager()
+security = HTTPBearer()
+
+
+async def get_current_admin(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    session: AsyncSession = Depends(get_db_session)
+) -> Admin:
+    """Get current admin from session token"""
+    token = credentials.credentials
+    admin = await admin_service.validate_admin_session(session, token)
+    
+    if not admin:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"message": "Invalid or expired admin session token"}
+        )
+    
+    return admin
 
 
 @router.get(
@@ -35,7 +58,7 @@ async def health_check(
             try:
                 await cache_manager._redis.ping()
                 redis_connected = True
-            except:
+            except Exception:
                 redis_connected = False
         
         # Check WAPI accessibility
@@ -68,7 +91,8 @@ async def health_check(
     description="Get all available system prompts and their r_types"
 )
 async def get_system_prompts(
-    request_logger: RequestLogger = Depends(get_secure_request_logger)
+    request_logger: RequestLogger = Depends(get_secure_request_logger),
+    current_admin: Admin = Depends(get_current_admin)
 ):
     """Get all system prompts"""
     
@@ -101,7 +125,8 @@ async def get_system_prompts(
 )
 async def update_system_prompt(
     update: SystemPromptUpdate,
-    request_logger: RequestLogger = Depends(get_secure_request_logger)
+    request_logger: RequestLogger = Depends(get_secure_request_logger),
+    current_admin: Admin = Depends(get_current_admin)
 ):
     """Update system prompt"""
     
@@ -131,7 +156,8 @@ async def update_system_prompt(
     description="Clear all cached data (responses and research)"
 )
 async def clear_cache(
-    request_logger: RequestLogger = Depends(get_secure_request_logger)
+    request_logger: RequestLogger = Depends(get_secure_request_logger),
+    current_admin: Admin = Depends(get_current_admin)
 ):
     """Clear all cache"""
     
@@ -165,7 +191,8 @@ async def clear_cache(
     description="Get system usage statistics and metrics"
 )
 async def get_stats(
-    request_logger: RequestLogger = Depends(get_secure_request_logger)
+    request_logger: RequestLogger = Depends(get_secure_request_logger),
+    current_admin: Admin = Depends(get_current_admin)
 ):
     """Get system statistics"""
     
