@@ -144,7 +144,7 @@ async def authenticate_api_user(
     """
     
     if session is None:
-        async with get_db_session() as db_session:
+        async for db_session in get_db_session():
             return await _authenticate_api_user_impl(request, db_session)
     else:
         return await _authenticate_api_user_impl(request, session)
@@ -207,7 +207,7 @@ async def authenticate_api_user_no_credit_check(
     """
     
     if session is None:
-        async with get_db_session() as db_session:
+        async for db_session in get_db_session():
             return await _authenticate_api_user_no_credit_check_impl(request, db_session)
     else:
         return await _authenticate_api_user_no_credit_check_impl(request, session)

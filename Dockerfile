@@ -14,6 +14,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
         curl \
+        redis-tools \
+        postgresql-client \
+        gosu \
         && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -24,17 +27,22 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Copy application code
 COPY . .
 
-# Create non-root user
+# Copy and set up entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Create non-root user and directories
 RUN adduser --disabled-password --gecos '' appuser \
+    && mkdir -p /app/logs /app/data \
     && chown -R appuser:appuser /app
-USER appuser
 
 # Expose port
 EXPOSE 8000
 
-# Health check
+# Health check - using Python instead of curl
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
-# Run the application
+# Set entrypoint and default command
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

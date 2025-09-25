@@ -42,7 +42,47 @@
 - Redis (optional, falls back to memory cache)
 - Internet connection for research functionality
 
-## 🛠️ Installation
+## 🐳 Docker Deployment (Recommended)
+
+The easiest way to run PromptEnchanter is using Docker:
+
+### Quick Start with Docker
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd promptenchanter
+
+# Configure environment (copy and edit)
+cp .env.example .env
+# Edit .env with your WAPI_KEY and other settings
+
+# Start with Docker Compose
+docker-compose up -d
+
+# Check status
+docker-compose ps
+
+# View logs
+docker-compose logs -f
+
+# Test the deployment
+./scripts/test-docker.sh
+```
+
+### Production Docker Deployment
+
+```bash
+# Use production configuration
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# Or use the automated setup script
+./scripts/setup-production.sh
+```
+
+📖 **For detailed Docker deployment instructions, see [DOCKER_DEPLOYMENT_GUIDE.md](DOCKER_DEPLOYMENT_GUIDE.md)**
+
+## 🛠️ Manual Installation
 
 1. **Clone the repository**
    ```bash
