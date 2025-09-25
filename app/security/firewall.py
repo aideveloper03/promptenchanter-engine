@@ -4,7 +4,7 @@ Firewall and IP filtering functionality
 import asyncio
 import ipaddress
 from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Set
+from typing import List, Dict, Optional, Set, Tuple
 from collections import defaultdict, deque
 from fastapi import Request, HTTPException, status
 from app.database.database import get_db_session
@@ -34,7 +34,7 @@ class FirewallManager:
         self.block_duration_minutes = 15
         self.whitelist_cache_duration = 300  # 5 minutes
     
-    async def is_ip_allowed(self, ip_address: str, session: AsyncSession) -> tuple[bool, str]:
+    async def is_ip_allowed(self, ip_address: str, session: AsyncSession) -> Tuple[bool, str]:
         """Check if IP address is allowed to access the API"""
         
         # Check if IP is in temporary block list
