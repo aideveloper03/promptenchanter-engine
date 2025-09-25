@@ -4,7 +4,7 @@ Database models for PromptEnchanter user management system
 import json
 from datetime import datetime
 from typing import Dict, List, Optional
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, JSON, Float
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, JSON, Float, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -75,7 +75,7 @@ class UserSession(Base):
     __tablename__ = "user_sessions"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     session_token = Column(String(255), unique=True, index=True, nullable=False)
     refresh_token = Column(String(255), unique=True, index=True, nullable=False)
     expires_at = Column(DateTime, nullable=False)
@@ -95,7 +95,7 @@ class MessageLog(Base):
     __tablename__ = "message_logs"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     username = Column(String(50), nullable=False, index=True)
     email = Column(String(255), nullable=False, index=True)
     model = Column(String(100), nullable=False)
