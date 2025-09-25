@@ -4,7 +4,7 @@ Encryption utilities for sensitive data protection
 import os
 import base64
 import secrets
-from typing import str, bytes, Optional
+from typing import Optional, Tuple, List
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -90,7 +90,7 @@ class PasswordManager:
         return pwd_context.verify(plain_password, hashed_password)
     
     @staticmethod
-    def validate_password_strength(password: str) -> tuple[bool, list[str]]:
+    def validate_password_strength(password: str) -> Tuple[bool, List[str]]:
         """Validate password meets security requirements"""
         errors = []
         
