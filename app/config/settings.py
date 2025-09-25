@@ -2,7 +2,7 @@
 PromptEnchanter Configuration Settings
 """
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from pydantic import Field
 from pydantic_settings import BaseSettings
 from functools import lru_cache

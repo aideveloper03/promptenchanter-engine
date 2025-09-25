@@ -1,0 +1,847 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "PromptEnchanter",
+    "description": "PromptEnchanter is an enterprise-grade service for enhancing user prompts with AI-powered research and prompt engineering techniques.\n\n## Features\n\n* **Prompt Engineering Styles**: Choose from various prompt engineering methodologies (BPE, BCOT, HCOT, ReAct, ToT)\n* **AI Deep Research**: Automatic research enhancement with internet access and multi-source analysis\n* **Batch Processing**: Process multiple prompts efficiently with parallel or sequential execution\n* **Caching**: Intelligent caching of responses and research results\n* **Rate Limiting**: Enterprise-grade rate limiting and security\n* **Admin Controls**: System management and monitoring capabilities\n\n## Authentication\n\nAll endpoints require Bearer token authentication using your API key.\n\n## Rate Limits\n\n* Standard endpoints: 100 requests/minute with burst support\n* Batch endpoints: 25 requests/minute with reduced burst",
+    "version": "1.0.0",
+    "contact": {
+      "name": "PromptEnchanter Support",
+      "email": "support@promptenchanter.com"
+    },
+    "license": {
+      "name": "Proprietary",
+      "identifier": "Proprietary"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000",
+      "description": "Development server"
+    },
+    {
+      "url": "https://api.promptenchanter.com",
+      "description": "Production server"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter your API key as the bearer token"
+      }
+    },
+    "schemas": {
+      "MessageRole": {
+        "type": "string",
+        "enum": ["system", "user", "assistant"],
+        "description": "Role of the message sender"
+      },
+      "Message": {
+        "type": "object",
+        "required": ["role", "content"],
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/MessageRole"
+          },
+          "content": {
+            "type": "string",
+            "description": "Content of the message"
+          }
+        }
+      },
+      "RType": {
+        "type": "string",
+        "enum": ["bpe", "bcot", "hcot", "react", "tot"],
+        "description": "Prompt engineering style: BPE (Basic Prompt Engineering), BCOT (Basic Chain of Thoughts), HCOT (High Chain of Thoughts), ReAct (Reasoning + Action), ToT (Tree of Thoughts)"
+      },
+      "Level": {
+        "type": "string",
+        "enum": ["low", "medium", "high", "ultra"],
+        "description": "AI model level determining quality and cost"
+      },
+      "ResearchDepth": {
+        "type": "string",
+        "enum": ["basic", "medium", "high"],
+        "description": "Depth of AI research to conduct"
+      },
+      "ChatCompletionRequest": {
+        "type": "object",
+        "required": ["level", "messages"],
+        "properties": {
+          "level": {
+            "$ref": "#/components/schemas/Level"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            },
+            "description": "Array of conversation messages"
+          },
+          "r_type": {
+            "$ref": "#/components/schemas/RType",
+            "description": "Optional prompt engineering style"
+          },
+          "ai_research": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable AI research enhancement"
+          },
+          "research_depth": {
+            "$ref": "#/components/schemas/ResearchDepth",
+            "default": "basic"
+          },
+          "temperature": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2,
+            "default": 0.7,
+            "description": "Sampling temperature for randomness"
+          },
+          "max_tokens": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Maximum tokens to generate"
+          },
+          "top_p": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Nucleus sampling parameter"
+          },
+          "frequency_penalty": {
+            "type": "number",
+            "minimum": -2,
+            "maximum": 2,
+            "description": "Frequency penalty for repetition"
+          },
+          "presence_penalty": {
+            "type": "number",
+            "minimum": -2,
+            "maximum": 2,
+            "description": "Presence penalty for topic exploration"
+          },
+          "stop": {
+            "oneOf": [
+              {"type": "string"},
+              {"type": "array", "items": {"type": "string"}}
+            ],
+            "description": "Stop sequences for completion"
+          }
+        }
+      },
+      "Choice": {
+        "type": "object",
+        "required": ["index", "message"],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "description": "Choice index"
+          },
+          "message": {
+            "$ref": "#/components/schemas/Message"
+          },
+          "finish_reason": {
+            "type": "string",
+            "enum": ["stop", "length", "function_call", "content_filter"],
+            "description": "Reason for completion finish"
+          }
+        }
+      },
+      "Usage": {
+        "type": "object",
+        "required": ["prompt_tokens", "completion_tokens", "total_tokens"],
+        "properties": {
+          "prompt_tokens": {
+            "type": "integer",
+            "description": "Number of tokens in the prompt"
+          },
+          "completion_tokens": {
+            "type": "integer",
+            "description": "Number of tokens in the completion"
+          },
+          "total_tokens": {
+            "type": "integer",
+            "description": "Total tokens used"
+          }
+        }
+      },
+      "ChatCompletionResponse": {
+        "type": "object",
+        "required": ["id", "object", "created", "model", "choices"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the completion"
+          },
+          "object": {
+            "type": "string",
+            "default": "chat.completion",
+            "description": "Object type"
+          },
+          "created": {
+            "type": "integer",
+            "description": "Unix timestamp of creation"
+          },
+          "model": {
+            "type": "string",
+            "description": "Model used for completion"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Choice"
+            },
+            "description": "Array of completion choices"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/Usage"
+          }
+        }
+      },
+      "BatchTask": {
+        "type": "object",
+        "required": ["prompt"],
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "Prompt text for processing"
+          },
+          "r_type": {
+            "$ref": "#/components/schemas/RType",
+            "default": "bpe"
+          },
+          "temperature": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2,
+            "default": 0.7
+          },
+          "max_tokens": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "top_p": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "frequency_penalty": {
+            "type": "number",
+            "minimum": -2,
+            "maximum": 2
+          },
+          "presence_penalty": {
+            "type": "number",
+            "minimum": -2,
+            "maximum": 2
+          },
+          "stop": {
+            "oneOf": [
+              {"type": "string"},
+              {"type": "array", "items": {"type": "string"}}
+            ]
+          }
+        }
+      },
+      "BatchRequest": {
+        "type": "object",
+        "required": ["batch", "level"],
+        "properties": {
+          "batch": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BatchTask"
+            },
+            "description": "Array of batch tasks"
+          },
+          "level": {
+            "$ref": "#/components/schemas/Level"
+          },
+          "enable_research": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable research for all tasks"
+          },
+          "research_depth": {
+            "$ref": "#/components/schemas/ResearchDepth",
+            "default": "basic"
+          },
+          "parallel": {
+            "type": "boolean",
+            "default": true,
+            "description": "Process tasks in parallel"
+          }
+        }
+      },
+      "BatchTaskResult": {
+        "type": "object",
+        "required": ["task_index", "success", "processing_time_ms", "tokens_used"],
+        "properties": {
+          "task_index": {
+            "type": "integer",
+            "description": "Index of the task in the batch"
+          },
+          "success": {
+            "type": "boolean",
+            "description": "Whether the task succeeded"
+          },
+          "response": {
+            "$ref": "#/components/schemas/ChatCompletionResponse"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if task failed"
+          },
+          "processing_time_ms": {
+            "type": "integer",
+            "description": "Processing time in milliseconds"
+          },
+          "tokens_used": {
+            "type": "integer",
+            "description": "Tokens used for this task"
+          }
+        }
+      },
+      "BatchResponse": {
+        "type": "object",
+        "required": ["batch_id", "total_tasks", "successful_tasks", "failed_tasks", "results", "total_tokens_used", "total_processing_time_ms", "created_at"],
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "description": "Unique identifier for the batch"
+          },
+          "total_tasks": {
+            "type": "integer",
+            "description": "Total number of tasks in batch"
+          },
+          "successful_tasks": {
+            "type": "integer",
+            "description": "Number of successful tasks"
+          },
+          "failed_tasks": {
+            "type": "integer",
+            "description": "Number of failed tasks"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BatchTaskResult"
+            },
+            "description": "Array of task results"
+          },
+          "total_tokens_used": {
+            "type": "integer",
+            "description": "Total tokens used across all tasks"
+          },
+          "total_processing_time_ms": {
+            "type": "integer",
+            "description": "Total processing time in milliseconds"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Creation timestamp"
+          }
+        }
+      },
+      "UserRegistrationRequest": {
+        "type": "object",
+        "required": ["username", "name", "email", "password"],
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 50,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "description": "Unique username"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Full name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email address"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "description": "Password (min 8 characters)"
+          },
+          "user_type": {
+            "type": "string",
+            "enum": ["Personal", "Business"],
+            "default": "Personal",
+            "description": "Type of user account"
+          },
+          "about_me": {
+            "type": "string",
+            "description": "Optional about me section"
+          },
+          "hobbies": {
+            "type": "string",
+            "description": "Optional hobbies"
+          }
+        }
+      },
+      "UserLoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "UserProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "about_me": {
+            "type": "string"
+          },
+          "hobbies": {
+            "type": "string"
+          },
+          "user_type": {
+            "type": "string"
+          },
+          "time_created": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "subscription_plan": {
+            "type": "string"
+          },
+          "credits": {
+            "type": "object",
+            "description": "User credit balances"
+          },
+          "limits": {
+            "type": "object",
+            "description": "User usage limits"
+          },
+          "access_rtype": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Available prompt engineering styles"
+          },
+          "level": {
+            "type": "string"
+          },
+          "additional_notes": {
+            "type": "string"
+          },
+          "is_verified": {
+            "type": "boolean"
+          },
+          "last_login": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_activity": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error", "message"],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error type"
+          },
+          "message": {
+            "type": "string",
+            "description": "Error message"
+          },
+          "details": {
+            "type": "object",
+            "description": "Additional error details"
+          }
+        }
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "required": ["success", "message"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "default": true
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "description": "Additional response data"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": ["status", "service", "version"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["healthy", "unhealthy"]
+          },
+          "service": {
+            "type": "string",
+            "default": "PromptEnchanter"
+          },
+          "version": {
+            "type": "string",
+            "default": "1.0.0"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Root endpoint",
+        "description": "Get basic service information",
+        "responses": {
+          "200": {
+            "description": "Service information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "service": {"type": "string"},
+                    "version": {"type": "string"},
+                    "status": {"type": "string"},
+                    "docs": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check endpoint",
+        "description": "Check service health status",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/prompt/completions": {
+      "post": {
+        "summary": "Create chat completion",
+        "description": "Create a chat completion with PromptEnchanter enhancements.\n\nFeatures:\n- Prompt engineering styles (r_type)\n- AI-powered research (ai_research)\n- Level-based model selection\n- Caching and optimization\n- User authentication and credit management\n\nThe request is enhanced and forwarded to the configured AI API (WAPI).\n\n**Authentication Required**: Bearer token with valid API key\n**Credits Required**: 1 conversation credit per request",
+        "tags": ["chat"],
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatCompletionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful completion",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatCompletionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded or insufficient credits",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/batch/process": {
+      "post": {
+        "summary": "Process batch requests",
+        "description": "Process multiple prompts in batch with parallel or sequential execution",
+        "tags": ["batch"],
+        "security": [{"BearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Batch processing completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users/register": {
+      "post": {
+        "summary": "Register new user",
+        "description": "Register a new user account with validation and security measures",
+        "tags": ["user-management"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRegistrationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "User already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users/login": {
+      "post": {
+        "summary": "User login",
+        "description": "Authenticate user and create session",
+        "tags": ["user-management"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users/profile": {
+      "get": {
+        "summary": "Get user profile",
+        "description": "Get current user's profile information",
+        "tags": ["user-management"],
+        "security": [{"BearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "User profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfile"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "chat",
+      "description": "Chat completion endpoints for prompt enhancement"
+    },
+    {
+      "name": "batch",
+      "description": "Batch processing endpoints for multiple prompts"
+    },
+    {
+      "name": "user-management",
+      "description": "User registration, authentication, and profile management"
+    },
+    {
+      "name": "admin-panel",
+      "description": "Administrative endpoints for system management"
+    },
+    {
+      "name": "support-staff",
+      "description": "Support staff management endpoints"
+    },
+    {
+      "name": "monitoring",
+      "description": "System monitoring and health check endpoints"
+    }
+  ]
+}
