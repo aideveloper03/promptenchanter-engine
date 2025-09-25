@@ -3,6 +3,7 @@ Database connection and session management
 """
 import os
 from typing import AsyncGenerator
+from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from app.config.settings import get_settings
@@ -29,7 +30,21 @@ async_session_factory = async_sessionmaker(
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Get database session"""
+    """Get database session (for FastAPI dependency injection)"""
+    async with async_session_factory() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+
+@asynccontextmanager
+async def get_db_session_context() -> AsyncGenerator[AsyncSession, None]:
+    """Get database session as async context manager"""
     async with async_session_factory() as session:
         try:
             yield session

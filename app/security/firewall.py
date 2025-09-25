@@ -3,11 +3,13 @@ Firewall and IP filtering functionality
 """
 import asyncio
 import ipaddress
+import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Set, Tuple
 from collections import defaultdict, deque
 from fastapi import Request, HTTPException, status
-from app.database.database import get_db_session
+from starlette.middleware.base import BaseHTTPMiddleware
+from app.database.database import get_db_session_context
 from app.database.models import IPWhitelist, SecurityLog
 from app.security.encryption import ip_security_manager
 from app.utils.logger import get_logger
@@ -191,7 +193,7 @@ class FirewallManager:
     ):
         """Log security event to database"""
         try:
-            async with get_db_session() as session:
+            async with get_db_session_context() as session:
                 security_log = SecurityLog(
                     event_type=event_type,
                     user_id=user_id,
@@ -216,13 +218,14 @@ class FirewallManager:
         }
 
 
-class FirewallMiddleware:
+class FirewallMiddleware(BaseHTTPMiddleware):
     """FastAPI middleware for firewall functionality"""
     
-    def __init__(self, firewall_manager: FirewallManager):
+    def __init__(self, app, firewall_manager: FirewallManager):
+        super().__init__(app)
         self.firewall_manager = firewall_manager
     
-    async def __call__(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next):
         # Skip firewall for health check and docs
         if request.url.path in ["/health", "/docs", "/redoc", "/openapi.json"]:
             return await call_next(request)
@@ -231,7 +234,7 @@ class FirewallMiddleware:
         client_ip = ip_security_manager.get_client_ip(request)
         
         # Check if IP is allowed
-        async with get_db_session() as session:
+        async with get_db_session_context() as session:
             allowed, reason = await self.firewall_manager.is_ip_allowed(client_ip, session)
         
         if not allowed:
