@@ -577,16 +577,19 @@ class UserService:
     ):
         """Log security event"""
         try:
-            security_log = SecurityLog(
-                event_type=event_type,
-                user_id=user_id,
-                username=username,
-                ip_address=ip_address,
-                details=details,
-                severity=severity
-            )
-            session.add(security_log)
-            await session.flush()  # Don't commit here, let caller handle it
+            # Use a separate session for security logging to avoid transaction conflicts
+            from app.database.database import get_db_session_context
+            async with get_db_session_context() as log_session:
+                security_log = SecurityLog(
+                    event_type=event_type,
+                    user_id=user_id,
+                    username=username,
+                    ip_address=ip_address,
+                    details=details,
+                    severity=severity
+                )
+                log_session.add(security_log)
+                await log_session.commit()
         except Exception as e:
             logger.error(f"Failed to log security event: {e}")
 
