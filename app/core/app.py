@@ -160,12 +160,21 @@ def create_application() -> FastAPI:
     async def http_exception_handler(request: Request, exc: HTTPException):
         request_id = getattr(request.state, 'request_id', 'unknown')
         
+        # Handle different detail formats
+        if isinstance(exc.detail, dict):
+            error_message = exc.detail.get("message", "Request failed")
+            details = exc.detail.copy()
+            details["request_id"] = request_id
+        else:
+            error_message = str(exc.detail) if exc.detail else "Request failed"
+            details = {"request_id": request_id}
+        
         return JSONResponse(
             status_code=exc.status_code,
             content=ErrorResponse(
-                error=exc.detail,
+                error=error_message,
                 message="Request failed",
-                details={"request_id": request_id}
+                details=details
             ).dict()
         )
     
