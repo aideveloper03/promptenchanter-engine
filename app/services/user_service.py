@@ -575,23 +575,17 @@ class UserService:
         details: dict = None,
         severity: str = "info"
     ):
-        """Log security event"""
-        try:
-            # Use a separate session for security logging to avoid transaction conflicts
-            from app.database.database import get_db_session_context
-            async with get_db_session_context() as log_session:
-                security_log = SecurityLog(
-                    event_type=event_type,
-                    user_id=user_id,
-                    username=username,
-                    ip_address=ip_address,
-                    details=details,
-                    severity=severity
-                )
-                log_session.add(security_log)
-                await log_session.commit()
-        except Exception as e:
-            logger.error(f"Failed to log security event: {e}")
+        """Log security event using safe logging that handles database failures"""
+        from app.utils.safe_logging import safe_db_logger
+        
+        await safe_db_logger.log_security_event(
+            event_type=event_type,
+            user_id=user_id,
+            username=username,
+            ip_address=ip_address,
+            details=details,
+            severity=severity
+        )
 
 
 # Global service instance
