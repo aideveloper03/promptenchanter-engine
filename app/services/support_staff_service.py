@@ -221,6 +221,19 @@ class SupportStaffService:
                     detail={"message": "Invalid credentials"}
                 )
             
+            # Check if password hash needs upgrade (bcrypt -> argon2id)
+            if password_manager.needs_rehash(staff.password_hash):
+                # Upgrade the hash to argon2id
+                new_hash = password_manager.hash_password(password)
+                staff.password_hash = new_hash
+                
+                await self._log_security_event(
+                    session, "support_password_hash_upgraded",
+                    username=staff.username,
+                    ip_address=ip_address,
+                    details={"from": "bcrypt", "to": "argon2id"}
+                )
+            
             # Reset failed attempts on successful login
             staff.failed_login_attempts = 0
             staff.last_login = datetime.now()

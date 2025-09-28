@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Validation script to test the bcrypt fix
-Tests password hashing and verification to ensure the bcrypt issue is resolved
+Legacy validation script for bcrypt functionality
+NOTE: This system has been migrated to argon2id. Use validate_argon2_migration.py instead.
+This script is kept for reference and testing backward compatibility.
 """
 
 import sys

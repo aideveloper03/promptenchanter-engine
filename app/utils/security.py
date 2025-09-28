@@ -10,7 +10,16 @@ from passlib.context import CryptContext
 from app.config.settings import get_settings
 
 settings = get_settings()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Use argon2id with backward compatibility for bcrypt
+pwd_context = CryptContext(
+    schemes=["argon2", "bcrypt"],
+    deprecated="auto",
+    argon2__time_cost=3,
+    argon2__memory_cost=65536,
+    argon2__parallelism=1,
+    argon2__hash_len=32,
+    argon2__salt_len=16
+)
 
 
 def verify_api_key(api_key: str) -> bool:
