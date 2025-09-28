@@ -78,6 +78,22 @@ class PasswordManager:
         """Hash password using bcrypt"""
         from passlib.context import CryptContext
         
+        # Bcrypt has a 72-byte limit, so truncate if necessary
+        if len(password.encode('utf-8')) > 72:
+            # Truncate to 72 bytes while preserving UTF-8 encoding
+            password_bytes = password.encode('utf-8')[:72]
+            # Ensure we don't break UTF-8 encoding at byte boundary
+            try:
+                password = password_bytes.decode('utf-8')
+            except UnicodeDecodeError:
+                # If truncation broke UTF-8, try shorter lengths
+                for i in range(71, 60, -1):
+                    try:
+                        password = password.encode('utf-8')[:i].decode('utf-8')
+                        break
+                    except UnicodeDecodeError:
+                        continue
+        
         pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
         return pwd_context.hash(password)
     
@@ -85,6 +101,22 @@ class PasswordManager:
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """Verify password against hash"""
         from passlib.context import CryptContext
+        
+        # Apply same truncation logic as in hash_password for consistency
+        if len(plain_password.encode('utf-8')) > 72:
+            # Truncate to 72 bytes while preserving UTF-8 encoding
+            password_bytes = plain_password.encode('utf-8')[:72]
+            # Ensure we don't break UTF-8 encoding at byte boundary
+            try:
+                plain_password = password_bytes.decode('utf-8')
+            except UnicodeDecodeError:
+                # If truncation broke UTF-8, try shorter lengths
+                for i in range(71, 60, -1):
+                    try:
+                        plain_password = plain_password.encode('utf-8')[:i].decode('utf-8')
+                        break
+                    except UnicodeDecodeError:
+                        continue
         
         pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
         return pwd_context.verify(plain_password, hashed_password)
@@ -96,6 +128,11 @@ class PasswordManager:
         
         if len(password) < 8:
             errors.append("Password must be at least 8 characters long")
+        
+        # Check bcrypt 72-byte limit
+        password_bytes = len(password.encode('utf-8'))
+        if password_bytes > 72:
+            errors.append(f"Password is too long ({password_bytes} bytes). Maximum is 72 bytes due to bcrypt limitations")
         
         if not any(c.isdigit() for c in password):
             errors.append("Password must contain at least 1 number")
