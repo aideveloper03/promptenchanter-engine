@@ -173,7 +173,7 @@ def create_application() -> FastAPI:
             status_code=exc.status_code,
             content=ErrorResponse(
                 error=error_message,
-                message="Request failed",
+                message=error_message,
                 details=details
             ).dict()
         )
