@@ -32,9 +32,10 @@ COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Create non-root user and directories
-RUN adduser --disabled-password --gecos '' appuser \
+RUN adduser --disabled-password --gecos '' --uid 1000 appuser \
     && mkdir -p /app/logs /app/data \
-    && chown -R appuser:appuser /app
+    && chown -R appuser:appuser /app \
+    && chmod -R 755 /app/data
 
 # Expose port
 EXPOSE 8000
