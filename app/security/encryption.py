@@ -75,51 +75,77 @@ class PasswordManager:
     
     @staticmethod
     def hash_password(password: str) -> str:
-        """Hash password using bcrypt"""
+        """Hash password using argon2id"""
         from passlib.context import CryptContext
         
-        # Bcrypt has a 72-byte limit, so truncate if necessary
-        if len(password.encode('utf-8')) > 72:
-            # Truncate to 72 bytes while preserving UTF-8 encoding
-            password_bytes = password.encode('utf-8')[:72]
-            # Ensure we don't break UTF-8 encoding at byte boundary
-            try:
-                password = password_bytes.decode('utf-8')
-            except UnicodeDecodeError:
-                # If truncation broke UTF-8, try shorter lengths
-                for i in range(71, 60, -1):
-                    try:
-                        password = password.encode('utf-8')[:i].decode('utf-8')
-                        break
-                    except UnicodeDecodeError:
-                        continue
-        
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        # Configure Argon2id with secure parameters
+        # time_cost=3: Number of iterations (higher = slower but more secure)
+        # memory_cost=65536: Memory usage in KiB (64 MB)
+        # parallelism=1: Number of parallel threads
+        pwd_context = CryptContext(
+            schemes=["argon2"],
+            deprecated="auto",
+            argon2__time_cost=3,
+            argon2__memory_cost=65536,  # 64 MB
+            argon2__parallelism=1,
+            argon2__hash_len=32,  # 32 byte hash output
+            argon2__salt_len=16   # 16 byte salt
+        )
         return pwd_context.hash(password)
     
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
-        """Verify password against hash"""
+        """Verify password against hash (supports both argon2id and legacy bcrypt)"""
         from passlib.context import CryptContext
         
-        # Apply same truncation logic as in hash_password for consistency
-        if len(plain_password.encode('utf-8')) > 72:
-            # Truncate to 72 bytes while preserving UTF-8 encoding
-            password_bytes = plain_password.encode('utf-8')[:72]
-            # Ensure we don't break UTF-8 encoding at byte boundary
-            try:
-                plain_password = password_bytes.decode('utf-8')
-            except UnicodeDecodeError:
-                # If truncation broke UTF-8, try shorter lengths
-                for i in range(71, 60, -1):
-                    try:
-                        plain_password = plain_password.encode('utf-8')[:i].decode('utf-8')
-                        break
-                    except UnicodeDecodeError:
-                        continue
+        # Support both argon2id (new) and bcrypt (legacy) for backward compatibility
+        pwd_context = CryptContext(
+            schemes=["argon2", "bcrypt"],
+            deprecated="auto",
+            # Argon2id configuration
+            argon2__time_cost=3,
+            argon2__memory_cost=65536,
+            argon2__parallelism=1,
+            argon2__hash_len=32,
+            argon2__salt_len=16
+        )
         
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-        return pwd_context.verify(plain_password, hashed_password)
+        # For bcrypt compatibility, apply the same truncation logic as before
+        verification_password = plain_password
+        if hashed_password.startswith(('$2a$', '$2b$', '$2x$', '$2y$')):  # bcrypt hash
+            if len(plain_password.encode('utf-8')) > 72:
+                # Truncate to 72 bytes while preserving UTF-8 encoding
+                password_bytes = plain_password.encode('utf-8')[:72]
+                # Ensure we don't break UTF-8 encoding at byte boundary
+                try:
+                    verification_password = password_bytes.decode('utf-8')
+                except UnicodeDecodeError:
+                    # If truncation broke UTF-8, try shorter lengths
+                    for i in range(71, 60, -1):
+                        try:
+                            verification_password = plain_password.encode('utf-8')[:i].decode('utf-8')
+                            break
+                        except UnicodeDecodeError:
+                            continue
+        
+        return pwd_context.verify(verification_password, hashed_password)
+    
+    @staticmethod
+    def needs_rehash(hashed_password: str) -> bool:
+        """Check if password hash needs to be upgraded to argon2id"""
+        from passlib.context import CryptContext
+        
+        pwd_context = CryptContext(
+            schemes=["argon2", "bcrypt"],
+            deprecated="auto",
+            argon2__time_cost=3,
+            argon2__memory_cost=65536,
+            argon2__parallelism=1,
+            argon2__hash_len=32,
+            argon2__salt_len=16
+        )
+        
+        return pwd_context.needs_update(hashed_password)
     
     @staticmethod
     def validate_password_strength(password: str) -> Tuple[bool, List[str]]:
@@ -129,10 +155,10 @@ class PasswordManager:
         if len(password) < 8:
             errors.append("Password must be at least 8 characters long")
         
-        # Check bcrypt 72-byte limit
+        # Set reasonable maximum length (argon2id can handle much longer passwords)
         password_bytes = len(password.encode('utf-8'))
-        if password_bytes > 72:
-            errors.append(f"Password is too long ({password_bytes} bytes). Maximum is 72 bytes due to bcrypt limitations")
+        if password_bytes > 1024:  # 1KB limit - reasonable for passwords
+            errors.append(f"Password is too long ({password_bytes} bytes). Maximum is 1024 bytes")
         
         if not any(c.isdigit() for c in password):
             errors.append("Password must contain at least 1 number")

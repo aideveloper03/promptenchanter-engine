@@ -185,6 +185,19 @@ class AdminService:
                     detail={"message": "Invalid credentials"}
                 )
             
+            # Check if password hash needs upgrade (bcrypt -> argon2id)
+            if password_manager.needs_rehash(admin.password_hash):
+                # Upgrade the hash to argon2id
+                new_hash = password_manager.hash_password(password)
+                admin.password_hash = new_hash
+                
+                await self._log_admin_security_event(
+                    session, "admin_password_hash_upgraded",
+                    username=admin.username,
+                    ip_address=ip_address,
+                    details={"from": "bcrypt", "to": "argon2id"}
+                )
+            
             # Reset failed attempts on successful login
             admin.failed_login_attempts = 0
             admin.last_login = datetime.now()
