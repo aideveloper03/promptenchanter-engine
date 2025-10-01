@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     algorithm: str = Field(default="HS256", env="ALGORITHM")
     
     # Database Configuration
-    database_url: str = Field(default="sqlite+aiosqlite:///./promptenchanter.db", env="DATABASE_URL")
+    database_url: str = Field(default="sqlite+aiosqlite:///./data/promptenchanter2.db", env="DATABASE_URL")
     
     # Redis Configuration
     redis_url: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")

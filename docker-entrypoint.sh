@@ -13,6 +13,14 @@ mkdir -p /app/logs /app/data
 # Set correct permissions
 echo "🔧 Setting permissions..."
 chown -R appuser:appuser /app/logs /app/data
+chmod -R 755 /app/data
+# Ensure database files have write permissions
+if [ -f "/app/data/promptenchanter.db" ]; then
+    chmod 664 /app/data/promptenchanter.db
+fi
+if [ -f "/app/data/promptenchanter2.db" ]; then
+    chmod 664 /app/data/promptenchanter2.db
+fi
 
 # Wait for dependencies
 echo "⏳ Waiting for dependencies..."

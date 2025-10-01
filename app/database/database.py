@@ -4,6 +4,7 @@ Database connection and session management
 import os
 from typing import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from app.config.settings import get_settings
@@ -11,7 +12,24 @@ from app.config.settings import get_settings
 settings = get_settings()
 
 # Database configuration
-DATABASE_URL = getattr(settings, 'database_url', 'sqlite+aiosqlite:///./promptenchanter.db')
+DATABASE_URL = getattr(settings, 'database_url', 'sqlite+aiosqlite:///./data/promptenchanter2.db')
+
+# Ensure database directory exists with proper permissions
+if "sqlite" in DATABASE_URL:
+    # Extract database path from URL
+    db_path = DATABASE_URL.replace('sqlite+aiosqlite:///', '')
+    db_dir = Path(db_path).parent
+    
+    # Create directory if it doesn't exist
+    db_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Set proper permissions
+    try:
+        os.chmod(str(db_dir), 0o755)
+        if Path(db_path).exists():
+            os.chmod(db_path, 0o664)
+    except (OSError, PermissionError) as e:
+        print(f"Warning: Could not set database permissions: {e}")
 
 # For SQLite, ensure proper connection parameters
 engine_kwargs = {
