@@ -34,6 +34,13 @@ async def lifespan(app: FastAPI):
     await init_database()
     logger.info("Database initialized")
     
+    # Create default admin user if none exists
+    try:
+        from scripts.create_default_admin import create_default_admin
+        await create_default_admin()
+    except Exception as e:
+        logger.warning(f"Could not create default admin user: {e}")
+    
     # Connect to cache
     await cache_manager.connect()
     

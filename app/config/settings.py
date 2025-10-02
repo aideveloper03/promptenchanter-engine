@@ -122,6 +122,17 @@ class Settings(BaseSettings):
     research_enabled_by_default: bool = Field(default=True, env="RESEARCH_ENABLED_BY_DEFAULT")
     auto_credit_reset_enabled: bool = Field(default=True, env="AUTO_CREDIT_RESET_ENABLED")
     
+    # Admin Configuration
+    default_admin_username: str = Field(default="admin", env="DEFAULT_ADMIN_USERNAME")
+    default_admin_password: str = Field(default="ChangeThisPassword123!", env="DEFAULT_ADMIN_PASSWORD")
+    default_admin_email: str = Field(default="admin@promptenchanter.com", env="DEFAULT_ADMIN_EMAIL")
+    default_admin_name: str = Field(default="System Administrator", env="DEFAULT_ADMIN_NAME")
+    
+    # Logging Configuration
+    log_file_path: str = Field(default="./logs/promptenchanter.log", env="LOG_FILE_PATH")
+    log_max_size_mb: int = Field(default=100, env="LOG_MAX_SIZE_MB")
+    log_backup_count: int = Field(default=5, env="LOG_BACKUP_COUNT")
+    
     # Model Mapping
     level_model_mapping: Dict[str, str] = {
         "low": "gpt-4o-mini",

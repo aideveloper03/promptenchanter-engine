@@ -110,7 +110,7 @@ class UserService:
                 "username": user.username,
                 "email": user.email,
                 "api_key": user.api_key,
-                "verification_required": True
+                "verification_required": settings.email_verification_enabled
             }
             
         except IntegrityError as e:
