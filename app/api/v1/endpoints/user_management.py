@@ -28,28 +28,14 @@ from app.services.user_service import user_service
 from app.security.encryption import encryption_manager, ip_security_manager
 from app.security.firewall import firewall_manager
 from app.utils.logger import get_logger
+from app.api.middleware.comprehensive_auth import get_current_user_session
+from app.config.settings import get_settings
 
 logger = get_logger(__name__)
 security = HTTPBearer()
+settings = get_settings()
 
 router = APIRouter()
-
-
-async def get_current_user_from_session(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    session: AsyncSession = Depends(get_db_session)
-):
-    """Get current user from session token"""
-    token = credentials.credentials
-    user = await user_service.validate_session(session, token)
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"message": "Invalid or expired session token"}
-        )
-    
-    return user
 
 
 @router.post(
@@ -65,6 +51,13 @@ async def register_user(
     session: AsyncSession = Depends(get_db_session)
 ):
     """Register a new user"""
+    
+    # Check if user registration is enabled
+    if not settings.user_registration_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"message": "User registration is currently disabled"}
+        )
     
     # Get client IP
     client_ip = ip_security_manager.get_client_ip(http_request)
@@ -172,7 +165,7 @@ async def logout_user(
     description="Get current user's profile information"
 )
 async def get_user_profile(
-    current_user = Depends(get_current_user_from_session),
+    current_user = Depends(get_current_user_session),
     session: AsyncSession = Depends(get_db_session)
 ):
     """Get user profile"""
@@ -182,16 +175,16 @@ async def get_user_profile(
         username=current_user.username,
         name=current_user.name,
         email=current_user.email,
-        about_me=current_user.about_me,
-        hobbies=current_user.hobbies,
+        about_me=current_user.about_me or "",
+        hobbies=current_user.hobbies or "",
         user_type=current_user.user_type,
         time_created=current_user.time_created,
         subscription_plan=current_user.subscription_plan,
-        credits=current_user.credits,
-        limits=current_user.limits,
-        access_rtype=current_user.access_rtype,
+        credits=current_user.credits or {"main": 0, "reset": 0},
+        limits=current_user.limits or {"conversation_limit": 0, "reset": 0},
+        access_rtype=current_user.access_rtype or [],
         level=current_user.level,
-        additional_notes=current_user.additional_notes,
+        additional_notes=current_user.additional_notes or "",
         is_verified=current_user.is_verified,
         last_login=current_user.last_login,
         last_activity=current_user.last_activity
@@ -206,7 +199,7 @@ async def get_user_profile(
 )
 async def update_user_profile(
     request: UpdateProfileRequest,
-    current_user = Depends(get_current_user_from_session),
+    current_user = Depends(get_current_user_session),
     session: AsyncSession = Depends(get_db_session)
 ):
     """Update user profile"""
@@ -244,7 +237,7 @@ async def update_user_profile(
     description="Get user's API key (encrypted for security)"
 )
 async def get_api_key(
-    current_user = Depends(get_current_user_from_session)
+    current_user = Depends(get_current_user_session)
 ):
     """Get user's API key"""
     
@@ -265,7 +258,7 @@ async def get_api_key(
     description="Regenerate user's API key"
 )
 async def regenerate_api_key(
-    current_user = Depends(get_current_user_from_session),
+    current_user = Depends(get_current_user_session),
     session: AsyncSession = Depends(get_db_session)
 ):
     """Regenerate user's API key"""
@@ -283,7 +276,7 @@ async def regenerate_api_key(
 )
 async def update_email(
     request: UpdateEmailRequest,
-    current_user = Depends(get_current_user_from_session),
+    current_user = Depends(get_current_user_session),
     session: AsyncSession = Depends(get_db_session)
 ):
     """Update user's email address"""
@@ -312,17 +305,20 @@ async def update_email(
                 detail={"message": "Email already exists"}
             )
         
-        # Update email (requires verification)
+        # Update email (requires verification if enabled)
         current_user.email = request.new_email.lower()
-        current_user.is_verified = False  # Require re-verification
+        if settings.email_verification_enabled:
+            current_user.is_verified = False  # Require re-verification
         
         await session.commit()
         
         logger.info(f"Email updated for user: {current_user.username}")
         
-        return SuccessResponse(
-            message="Email updated successfully. Please verify your new email address."
-        )
+        message = "Email updated successfully."
+        if settings.email_verification_enabled:
+            message += " Please verify your new email address."
+        
+        return SuccessResponse(message=message)
         
     except HTTPException:
         raise
@@ -343,7 +339,7 @@ async def update_email(
 )
 async def reset_password(
     request: ResetPasswordRequest,
-    current_user = Depends(get_current_user_from_session),
+    current_user = Depends(get_current_user_session),
     session: AsyncSession = Depends(get_db_session)
 ):
     """Reset user's password"""
@@ -398,7 +394,7 @@ async def reset_password(
 )
 async def delete_account(
     request: DeleteAccountRequest,
-    current_user = Depends(get_current_user_from_session),
+    current_user = Depends(get_current_user_session),
     session: AsyncSession = Depends(get_db_session)
 ):
     """Delete user account"""

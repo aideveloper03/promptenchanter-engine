@@ -129,6 +129,9 @@ def create_application() -> FastAPI:
     from app.security.firewall import firewall_manager, FirewallMiddleware
     app.add_middleware(FirewallMiddleware, firewall_manager=firewall_manager)
     
+    # Add comprehensive authentication middleware
+    from app.api.middleware.comprehensive_auth import auth_middleware
+    
     # Add rate limiting
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
