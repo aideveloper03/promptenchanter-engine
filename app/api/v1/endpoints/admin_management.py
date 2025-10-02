@@ -28,6 +28,7 @@ from app.services.user_service import user_service
 from app.security.encryption import ip_security_manager
 from app.security.firewall import firewall_manager
 from app.utils.logger import get_logger
+from app.api.middleware.comprehensive_auth import get_current_admin, get_current_super_admin
 
 logger = get_logger(__name__)
 security = HTTPBearer()
@@ -35,34 +36,6 @@ security = HTTPBearer()
 router = APIRouter()
 
 
-async def get_current_admin(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    session: AsyncSession = Depends(get_db_session)
-) -> Admin:
-    """Get current admin from session token"""
-    token = credentials.credentials
-    admin = await admin_service.validate_admin_session(session, token)
-    
-    if not admin:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"message": "Invalid or expired admin session token"}
-        )
-    
-    return admin
-
-
-async def require_super_admin(
-    current_admin: Admin = Depends(get_current_admin)
-) -> Admin:
-    """Require super admin privileges"""
-    if not current_admin.is_super_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"message": "Super admin privileges required"}
-        )
-    
-    return current_admin
 
 
 @router.post(
@@ -107,7 +80,7 @@ async def admin_login(
 )
 async def create_admin(
     request: CreateAdminRequest,
-    current_admin: Admin = Depends(require_super_admin),
+    current_admin: Admin = Depends(get_current_super_admin),
     session: AsyncSession = Depends(get_db_session)
 ):
     """Create new admin user"""
@@ -270,7 +243,7 @@ async def update_user(
 async def delete_user(
     user_id: int,
     reason: Optional[str] = Query("Admin deletion"),
-    current_admin: Admin = Depends(require_super_admin),
+    current_admin: Admin = Depends(get_current_super_admin),
     session: AsyncSession = Depends(get_db_session)
 ):
     """Delete user account"""

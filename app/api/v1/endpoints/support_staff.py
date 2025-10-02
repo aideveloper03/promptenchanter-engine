@@ -23,6 +23,7 @@ from app.services.admin_service import admin_service
 from app.security.encryption import ip_security_manager
 from app.security.firewall import firewall_manager
 from app.utils.logger import get_logger
+from app.api.middleware.comprehensive_auth import get_current_support_staff, get_current_admin
 
 logger = get_logger(__name__)
 security = HTTPBearer()
@@ -30,21 +31,6 @@ security = HTTPBearer()
 router = APIRouter()
 
 
-async def get_current_support_staff(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    session: AsyncSession = Depends(get_db_session)
-) -> SupportStaff:
-    """Get current support staff from session token"""
-    token = credentials.credentials
-    staff = await support_staff_service.validate_support_staff_session(session, token)
-    
-    if not staff:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"message": "Invalid or expired support staff session token"}
-        )
-    
-    return staff
 
 
 def require_permission(permission: str):
@@ -101,29 +87,10 @@ async def support_staff_login(
 )
 async def create_support_staff(
     request: CreateSupportStaffRequest,
-    http_request: Request,
+    current_admin: Admin = Depends(get_current_admin),
     session: AsyncSession = Depends(get_db_session)
 ):
     """Create new support staff member (requires admin authentication)"""
-    
-    # This endpoint requires admin authentication, not support staff
-    # Get admin token from Authorization header
-    auth_header = http_request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"message": "Admin authorization required"}
-        )
-    
-    admin_token = auth_header[7:]  # Remove "Bearer " prefix
-    
-    # Validate admin session
-    admin = await admin_service.validate_admin_session(session, admin_token)
-    if not admin:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"message": "Invalid admin session"}
-        )
     
     result = await support_staff_service.create_support_staff(
         session=session,
@@ -132,7 +99,7 @@ async def create_support_staff(
         email=request.email,
         password=request.password,
         staff_level=request.staff_level,
-        created_by=admin.username
+        created_by=current_admin.username
     )
     
     return SuccessResponse(**result)

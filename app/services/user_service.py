@@ -68,7 +68,10 @@ class UserService:
             # Generate unique API key
             api_key = await self._generate_unique_api_key(session)
             
-            # Create user record
+            # Create user record with default values from settings
+            from app.config.settings import get_settings
+            settings = get_settings()
+            
             user = User(
                 username=username,
                 name=name,
@@ -79,7 +82,11 @@ class UserService:
                 user_type=user_type,
                 api_key=api_key,
                 is_active=True,
-                is_verified=False  # Email verification required
+                is_verified=not settings.email_verification_enabled,  # Auto-verify if email verification disabled
+                credits=settings.default_user_credits,
+                limits=settings.default_user_limits,
+                access_rtype=settings.default_user_access_rtype,
+                level=settings.default_user_level
             )
             
             session.add(user)
@@ -103,7 +110,7 @@ class UserService:
                 "username": user.username,
                 "email": user.email,
                 "api_key": user.api_key,
-                "verification_required": True
+                "verification_required": settings.email_verification_enabled
             }
             
         except IntegrityError as e:

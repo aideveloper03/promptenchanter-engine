@@ -34,6 +34,13 @@ async def lifespan(app: FastAPI):
     await init_database()
     logger.info("Database initialized")
     
+    # Create default admin user if none exists
+    try:
+        from scripts.create_default_admin import create_default_admin
+        await create_default_admin()
+    except Exception as e:
+        logger.warning(f"Could not create default admin user: {e}")
+    
     # Connect to cache
     await cache_manager.connect()
     
@@ -128,6 +135,9 @@ def create_application() -> FastAPI:
     # Add firewall middleware
     from app.security.firewall import firewall_manager, FirewallMiddleware
     app.add_middleware(FirewallMiddleware, firewall_manager=firewall_manager)
+    
+    # Add comprehensive authentication middleware
+    from app.api.middleware.comprehensive_auth import auth_middleware
     
     # Add rate limiting
     app.state.limiter = limiter
