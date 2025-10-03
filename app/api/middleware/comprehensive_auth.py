@@ -4,7 +4,7 @@ Comprehensive authentication and authorization middleware for PromptEnchanter
 from fastapi import Request, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, Union, Tuple
+from typing import Optional, Union, Tuple, Dict, Any
 from datetime import datetime
 import json
 
