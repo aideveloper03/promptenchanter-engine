@@ -2,592 +2,31 @@
   "openapi": "3.1.0",
   "info": {
     "title": "PromptEnchanter",
-    "description": "PromptEnchanter is an enterprise-grade service for enhancing user prompts with AI-powered research and prompt engineering techniques.\n\n## Features\n\n* **Prompt Engineering Styles**: Choose from various prompt engineering methodologies (BPE, BCOT, HCOT, ReAct, ToT)\n* **AI Deep Research**: Automatic research enhancement with internet access and multi-source analysis\n* **Batch Processing**: Process multiple prompts efficiently with parallel or sequential execution\n* **Caching**: Intelligent caching of responses and research results\n* **Rate Limiting**: Enterprise-grade rate limiting and security\n* **Admin Controls**: System management and monitoring capabilities\n\n## Authentication\n\nAll endpoints require Bearer token authentication using your API key.\n\n## Rate Limits\n\n* Standard endpoints: 100 requests/minute with burst support\n* Batch endpoints: 25 requests/minute with reduced burst",
-    "version": "1.0.0",
-    "contact": {
-      "name": "PromptEnchanter Support",
-      "email": "support@promptenchanter.com"
-    },
-    "license": {
-      "name": "Proprietary",
-      "identifier": "Proprietary"
-    }
-  },
-  "servers": [
-    {
-      "url": "http://localhost:8000",
-      "description": "Development server"
-    },
-    {
-      "url": "https://api.promptenchanter.com",
-      "description": "Production server"
-    }
-  ],
-  "security": [
-    {
-      "BearerAuth": []
-    }
-  ],
-  "components": {
-    "securitySchemes": {
-      "BearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT",
-        "description": "Enter your API key as the bearer token"
-      }
-    },
-    "schemas": {
-      "MessageRole": {
-        "type": "string",
-        "enum": ["system", "user", "assistant"],
-        "description": "Role of the message sender"
-      },
-      "Message": {
-        "type": "object",
-        "required": ["role", "content"],
-        "properties": {
-          "role": {
-            "$ref": "#/components/schemas/MessageRole"
-          },
-          "content": {
-            "type": "string",
-            "description": "Content of the message"
-          }
-        }
-      },
-      "RType": {
-        "type": "string",
-        "enum": ["bpe", "bcot", "hcot", "react", "tot"],
-        "description": "Prompt engineering style: BPE (Basic Prompt Engineering), BCOT (Basic Chain of Thoughts), HCOT (High Chain of Thoughts), ReAct (Reasoning + Action), ToT (Tree of Thoughts)"
-      },
-      "Level": {
-        "type": "string",
-        "enum": ["low", "medium", "high", "ultra"],
-        "description": "AI model level determining quality and cost"
-      },
-      "ResearchDepth": {
-        "type": "string",
-        "enum": ["basic", "medium", "high"],
-        "description": "Depth of AI research to conduct"
-      },
-      "ChatCompletionRequest": {
-        "type": "object",
-        "required": ["level", "messages"],
-        "properties": {
-          "level": {
-            "$ref": "#/components/schemas/Level"
-          },
-          "messages": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Message"
-            },
-            "description": "Array of conversation messages"
-          },
-          "r_type": {
-            "$ref": "#/components/schemas/RType",
-            "description": "Optional prompt engineering style"
-          },
-          "ai_research": {
-            "type": "boolean",
-            "default": false,
-            "description": "Enable AI research enhancement"
-          },
-          "research_depth": {
-            "$ref": "#/components/schemas/ResearchDepth",
-            "default": "basic"
-          },
-          "temperature": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 2,
-            "default": 0.7,
-            "description": "Sampling temperature for randomness"
-          },
-          "max_tokens": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "Maximum tokens to generate"
-          },
-          "top_p": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1,
-            "description": "Nucleus sampling parameter"
-          },
-          "frequency_penalty": {
-            "type": "number",
-            "minimum": -2,
-            "maximum": 2,
-            "description": "Frequency penalty for repetition"
-          },
-          "presence_penalty": {
-            "type": "number",
-            "minimum": -2,
-            "maximum": 2,
-            "description": "Presence penalty for topic exploration"
-          },
-          "stop": {
-            "oneOf": [
-              {"type": "string"},
-              {"type": "array", "items": {"type": "string"}}
-            ],
-            "description": "Stop sequences for completion"
-          }
-        }
-      },
-      "Choice": {
-        "type": "object",
-        "required": ["index", "message"],
-        "properties": {
-          "index": {
-            "type": "integer",
-            "description": "Choice index"
-          },
-          "message": {
-            "$ref": "#/components/schemas/Message"
-          },
-          "finish_reason": {
-            "type": "string",
-            "enum": ["stop", "length", "function_call", "content_filter"],
-            "description": "Reason for completion finish"
-          }
-        }
-      },
-      "Usage": {
-        "type": "object",
-        "required": ["prompt_tokens", "completion_tokens", "total_tokens"],
-        "properties": {
-          "prompt_tokens": {
-            "type": "integer",
-            "description": "Number of tokens in the prompt"
-          },
-          "completion_tokens": {
-            "type": "integer",
-            "description": "Number of tokens in the completion"
-          },
-          "total_tokens": {
-            "type": "integer",
-            "description": "Total tokens used"
-          }
-        }
-      },
-      "ChatCompletionResponse": {
-        "type": "object",
-        "required": ["id", "object", "created", "model", "choices"],
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "Unique identifier for the completion"
-          },
-          "object": {
-            "type": "string",
-            "default": "chat.completion",
-            "description": "Object type"
-          },
-          "created": {
-            "type": "integer",
-            "description": "Unix timestamp of creation"
-          },
-          "model": {
-            "type": "string",
-            "description": "Model used for completion"
-          },
-          "choices": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Choice"
-            },
-            "description": "Array of completion choices"
-          },
-          "usage": {
-            "$ref": "#/components/schemas/Usage"
-          }
-        }
-      },
-      "BatchTask": {
-        "type": "object",
-        "required": ["prompt"],
-        "properties": {
-          "prompt": {
-            "type": "string",
-            "description": "Prompt text for processing"
-          },
-          "r_type": {
-            "$ref": "#/components/schemas/RType",
-            "default": "bpe"
-          },
-          "temperature": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 2,
-            "default": 0.7
-          },
-          "max_tokens": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "top_p": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1
-          },
-          "frequency_penalty": {
-            "type": "number",
-            "minimum": -2,
-            "maximum": 2
-          },
-          "presence_penalty": {
-            "type": "number",
-            "minimum": -2,
-            "maximum": 2
-          },
-          "stop": {
-            "oneOf": [
-              {"type": "string"},
-              {"type": "array", "items": {"type": "string"}}
-            ]
-          }
-        }
-      },
-      "BatchRequest": {
-        "type": "object",
-        "required": ["batch", "level"],
-        "properties": {
-          "batch": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/BatchTask"
-            },
-            "description": "Array of batch tasks"
-          },
-          "level": {
-            "$ref": "#/components/schemas/Level"
-          },
-          "enable_research": {
-            "type": "boolean",
-            "default": false,
-            "description": "Enable research for all tasks"
-          },
-          "research_depth": {
-            "$ref": "#/components/schemas/ResearchDepth",
-            "default": "basic"
-          },
-          "parallel": {
-            "type": "boolean",
-            "default": true,
-            "description": "Process tasks in parallel"
-          }
-        }
-      },
-      "BatchTaskResult": {
-        "type": "object",
-        "required": ["task_index", "success", "processing_time_ms", "tokens_used"],
-        "properties": {
-          "task_index": {
-            "type": "integer",
-            "description": "Index of the task in the batch"
-          },
-          "success": {
-            "type": "boolean",
-            "description": "Whether the task succeeded"
-          },
-          "response": {
-            "$ref": "#/components/schemas/ChatCompletionResponse"
-          },
-          "error": {
-            "type": "string",
-            "description": "Error message if task failed"
-          },
-          "processing_time_ms": {
-            "type": "integer",
-            "description": "Processing time in milliseconds"
-          },
-          "tokens_used": {
-            "type": "integer",
-            "description": "Tokens used for this task"
-          }
-        }
-      },
-      "BatchResponse": {
-        "type": "object",
-        "required": ["batch_id", "total_tasks", "successful_tasks", "failed_tasks", "results", "total_tokens_used", "total_processing_time_ms", "created_at"],
-        "properties": {
-          "batch_id": {
-            "type": "string",
-            "description": "Unique identifier for the batch"
-          },
-          "total_tasks": {
-            "type": "integer",
-            "description": "Total number of tasks in batch"
-          },
-          "successful_tasks": {
-            "type": "integer",
-            "description": "Number of successful tasks"
-          },
-          "failed_tasks": {
-            "type": "integer",
-            "description": "Number of failed tasks"
-          },
-          "results": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/BatchTaskResult"
-            },
-            "description": "Array of task results"
-          },
-          "total_tokens_used": {
-            "type": "integer",
-            "description": "Total tokens used across all tasks"
-          },
-          "total_processing_time_ms": {
-            "type": "integer",
-            "description": "Total processing time in milliseconds"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Creation timestamp"
-          }
-        }
-      },
-      "UserRegistrationRequest": {
-        "type": "object",
-        "required": ["username", "name", "email", "password"],
-        "properties": {
-          "username": {
-            "type": "string",
-            "minLength": 3,
-            "maxLength": 50,
-            "pattern": "^[a-zA-Z0-9_-]+$",
-            "description": "Unique username"
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 100,
-            "description": "Full name"
-          },
-          "email": {
-            "type": "string",
-            "format": "email",
-            "description": "Email address"
-          },
-          "password": {
-            "type": "string",
-            "minLength": 8,
-            "description": "Password (min 8 characters)"
-          },
-          "user_type": {
-            "type": "string",
-            "enum": ["Personal", "Business"],
-            "default": "Personal",
-            "description": "Type of user account"
-          },
-          "about_me": {
-            "type": "string",
-            "description": "Optional about me section"
-          },
-          "hobbies": {
-            "type": "string",
-            "description": "Optional hobbies"
-          }
-        }
-      },
-      "UserLoginRequest": {
-        "type": "object",
-        "required": ["email", "password"],
-        "properties": {
-          "email": {
-            "type": "string",
-            "format": "email"
-          },
-          "password": {
-            "type": "string"
-          }
-        }
-      },
-      "UserProfile": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          },
-          "username": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string"
-          },
-          "about_me": {
-            "type": "string"
-          },
-          "hobbies": {
-            "type": "string"
-          },
-          "user_type": {
-            "type": "string"
-          },
-          "time_created": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "subscription_plan": {
-            "type": "string"
-          },
-          "credits": {
-            "type": "object",
-            "description": "User credit balances"
-          },
-          "limits": {
-            "type": "object",
-            "description": "User usage limits"
-          },
-          "access_rtype": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Available prompt engineering styles"
-          },
-          "level": {
-            "type": "string"
-          },
-          "additional_notes": {
-            "type": "string"
-          },
-          "is_verified": {
-            "type": "boolean"
-          },
-          "last_login": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "last_activity": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "ErrorResponse": {
-        "type": "object",
-        "required": ["error", "message"],
-        "properties": {
-          "error": {
-            "type": "string",
-            "description": "Error type"
-          },
-          "message": {
-            "type": "string",
-            "description": "Error message"
-          },
-          "details": {
-            "type": "object",
-            "description": "Additional error details"
-          }
-        }
-      },
-      "SuccessResponse": {
-        "type": "object",
-        "required": ["success", "message"],
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "default": true
-          },
-          "message": {
-            "type": "string"
-          },
-          "data": {
-            "type": "object",
-            "description": "Additional response data"
-          }
-        }
-      },
-      "HealthResponse": {
-        "type": "object",
-        "required": ["status", "service", "version"],
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": ["healthy", "unhealthy"]
-          },
-          "service": {
-            "type": "string",
-            "default": "PromptEnchanter"
-          },
-          "version": {
-            "type": "string",
-            "default": "1.0.0"
-          }
-        }
-      }
-    }
+    "description": "\n        PromptEnchanter is an enterprise-grade service for enhancing user prompts with AI-powered research and prompt engineering techniques.\n        \n        ## Features\n        \n        * **Prompt Engineering Styles**: Choose from various prompt engineering methodologies (BPE, BCOT, HCOT, ReAct, ToT)\n        * **AI Deep Research**: Automatic research enhancement with internet access and multi-source analysis\n        * **Batch Processing**: Process multiple prompts efficiently with parallel or sequential execution\n        * **Caching**: Intelligent caching of responses and research results\n        * **Rate Limiting**: Enterprise-grade rate limiting and security\n        * **Admin Controls**: System management and monitoring capabilities\n        \n        ## Authentication\n        \n        All endpoints require Bearer token authentication using your API key.\n        \n        ## Rate Limits\n        \n        * Standard endpoints: 100 requests/minute with burst support\n        * Batch endpoints: 25 requests/minute with reduced burst\n        ",
+    "version": "1.0.0"
   },
   "paths": {
-    "/": {
-      "get": {
-        "summary": "Root endpoint",
-        "description": "Get basic service information",
-        "responses": {
-          "200": {
-            "description": "Service information",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "service": {"type": "string"},
-                    "version": {"type": "string"},
-                    "status": {"type": "string"},
-                    "docs": {"type": "string"}
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/health": {
-      "get": {
-        "summary": "Health check endpoint",
-        "description": "Check service health status",
-        "responses": {
-          "200": {
-            "description": "Service is healthy",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/prompt/completions": {
+    "/v1/prompt-legacy/completions": {
       "post": {
+        "tags": [
+          "chat-legacy"
+        ],
         "summary": "Create chat completion",
-        "description": "Create a chat completion with PromptEnchanter enhancements.\n\nFeatures:\n- Prompt engineering styles (r_type)\n- AI-powered research (ai_research)\n- Level-based model selection\n- Caching and optimization\n- User authentication and credit management\n\nThe request is enhanced and forwarded to the configured AI API (WAPI).\n\n**Authentication Required**: Bearer token with valid API key\n**Credits Required**: 1 conversation credit per request",
-        "tags": ["chat"],
-        "security": [{"BearerAuth": []}],
+        "description": "Create a chat completion with PromptEnchanter enhancements.\n    \n    Features:\n    - Prompt engineering styles (r_type)\n    - AI-powered research (ai_research)\n    - Level-based model selection\n    - Caching and optimization\n    - User authentication and credit management\n    \n    The request is enhanced and forwarded to the configured AI API (WAPI).\n    \n    **Authentication Required**: Bearer token with valid API key\n    **Credits Required**: 1 conversation credit per request",
+        "operationId": "create_chat_completion_v1_prompt_legacy_completions_post",
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ChatCompletionRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
-            "description": "Successful completion",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
@@ -597,7 +36,7 @@
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Bad Request",
             "content": {
               "application/json": {
                 "schema": {
@@ -617,7 +56,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded or insufficient credits",
+            "description": "Too Many Requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -627,7 +66,7 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Internal Server Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -635,39 +74,56 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/v1/batch/process": {
-      "post": {
-        "summary": "Process batch requests",
-        "description": "Process multiple prompts in batch with parallel or sequential execution",
-        "tags": ["batch"],
-        "security": [{"BearerAuth": []}],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BatchRequest"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/prompt/completions": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Create chat completion (MongoDB)",
+        "description": "Create a chat completion with PromptEnchanter enhancements using MongoDB backend.\n    \n    Features:\n    - Prompt engineering styles (r_type)\n    - AI-powered research (ai_research)\n    - Level-based model selection\n    - Caching and optimization\n    - User authentication and credit management\n    - Email verification enforcement\n    \n    The request is enhanced and forwarded to the configured AI API (WAPI).\n    \n    **Authentication Required**: Bearer token with valid API key\n    **Credits Required**: 1 conversation credit per request\n    **Email Verification**: Required if enabled in settings",
+        "operationId": "create_chat_completion_mongodb_v1_prompt_completions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatCompletionRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
-            "description": "Batch processing completed",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BatchResponse"
+                  "$ref": "#/components/schemas/ChatCompletionResponse"
                 }
               }
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Bad Request",
             "content": {
               "application/json": {
                 "schema": {
@@ -687,7 +143,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded",
+            "description": "Too Many Requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -695,111 +151,73 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/v1/users/register": {
-      "post": {
-        "summary": "Register new user",
-        "description": "Register a new user account with validation and security measures",
-        "tags": ["user-management"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserRegistrationRequest"
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/batch/process": {
+      "post": {
+        "tags": [
+          "batch"
+        ],
+        "summary": "Process batch of prompts",
+        "description": "Process a batch of prompts with PromptEnchanter enhancements.\n    \n    Features:\n    - Parallel or sequential processing\n    - Batch-level research enabling\n    - Progress tracking and error handling\n    - Token usage and timing statistics\n    - User authentication and credit management\n    \n    Each prompt in the batch is processed as an individual chat completion\n    with the enhancement \"Just enhance the prompt with no questions.\"\n    \n    **Authentication Required**: Bearer token with valid API key\n    **Credits Required**: 1 conversation credit per task in batch",
+        "operationId": "process_batch_v1_batch_process_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
-          "201": {
-            "description": "User registered successfully",
+          "200": {
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
+                  "$ref": "#/components/schemas/BatchResponse"
                 }
               }
             }
           },
           "400": {
-            "description": "Bad request",
+            "description": "Bad Request",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "User already exists",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/users/login": {
-      "post": {
-        "summary": "User login",
-        "description": "Authenticate user and create session",
-        "tags": ["user-management"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserLoginRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Login successful",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SuccessResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Invalid credentials",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/users/profile": {
-      "get": {
-        "summary": "Get user profile",
-        "description": "Get current user's profile information",
-        "tags": ["user-management"],
-        "security": [{"BearerAuth": []}],
-        "responses": {
-          "200": {
-            "description": "User profile",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserProfile"
                 }
               }
             }
@@ -813,35 +231,4590 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/health": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Health check",
+        "description": "Check the health status of PromptEnchanter services",
+        "operationId": "health_check_v1_admin_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/system-prompts": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get system prompts",
+        "description": "Get all available system prompts and their r_types",
+        "operationId": "get_system_prompts_v1_admin_system_prompts_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Update system prompt",
+        "description": "Update or create a custom system prompt for an r_type",
+        "operationId": "update_system_prompt_v1_admin_system_prompts_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SystemPromptUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/cache": {
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Clear cache",
+        "description": "Clear all cached data (responses and research)",
+        "operationId": "clear_cache_v1_admin_cache_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/admin/stats": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get system statistics",
+        "description": "Get system usage statistics and metrics",
+        "operationId": "get_stats_v1_admin_stats_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/users-legacy/register": {
+      "post": {
+        "tags": [
+          "user-management-legacy"
+        ],
+        "summary": "Register new user",
+        "description": "Register a new user account with validation and security measures",
+        "operationId": "register_user_v1_users_legacy_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRegistrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRegistrationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users-legacy/login": {
+      "post": {
+        "tags": [
+          "user-management-legacy"
+        ],
+        "summary": "User login",
+        "description": "Authenticate user and create session",
+        "operationId": "login_user_v1_users_legacy_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserLoginResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users-legacy/refresh": {
+      "post": {
+        "tags": [
+          "user-management-legacy"
+        ],
+        "summary": "Refresh session",
+        "description": "Refresh session using refresh token",
+        "operationId": "refresh_session_v1_users_legacy_refresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshTokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users-legacy/logout": {
+      "post": {
+        "tags": [
+          "user-management-legacy"
+        ],
+        "summary": "User logout",
+        "description": "Logout user and invalidate session",
+        "operationId": "logout_user_v1_users_legacy_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/users-legacy/profile": {
+      "get": {
+        "tags": [
+          "user-management-legacy"
+        ],
+        "summary": "Get user profile",
+        "description": "Get current user's profile information",
+        "operationId": "get_user_profile_v1_users_legacy_profile_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfile"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "user-management-legacy"
+        ],
+        "summary": "Update user profile",
+        "description": "Update user profile information",
+        "operationId": "update_user_profile_v1_users_legacy_profile_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/users-legacy/api-key": {
+      "get": {
+        "tags": [
+          "user-management-legacy"
+        ],
+        "summary": "Get API key",
+        "description": "Get user's API key (encrypted for security)",
+        "operationId": "get_api_key_v1_users_legacy_api_key_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIKeyResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/users-legacy/api-key/regenerate": {
+      "post": {
+        "tags": [
+          "user-management-legacy"
+        ],
+        "summary": "Regenerate API key",
+        "description": "Regenerate user's API key",
+        "operationId": "regenerate_api_key_v1_users_legacy_api_key_regenerate_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegenerateAPIKeyResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/users-legacy/email": {
+      "put": {
+        "tags": [
+          "user-management-legacy"
+        ],
+        "summary": "Update email address",
+        "description": "Update user's email address with password verification",
+        "operationId": "update_email_v1_users_legacy_email_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/users-legacy/password": {
+      "put": {
+        "tags": [
+          "user-management-legacy"
+        ],
+        "summary": "Reset password",
+        "description": "Reset user's password with current password verification",
+        "operationId": "reset_password_v1_users_legacy_password_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/users-legacy/account": {
+      "delete": {
+        "tags": [
+          "user-management-legacy"
+        ],
+        "summary": "Delete account",
+        "description": "Delete user account with data archiving",
+        "operationId": "delete_account_v1_users_legacy_account_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/users/register": {
+      "post": {
+        "tags": [
+          "user-management"
+        ],
+        "summary": "Register new user",
+        "description": "Register a new user account with validation and security measures",
+        "operationId": "register_user_v1_users_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRegistrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRegistrationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users/login": {
+      "post": {
+        "tags": [
+          "user-management"
+        ],
+        "summary": "User login",
+        "description": "Authenticate user and create session",
+        "operationId": "login_user_v1_users_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserLoginResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users/logout": {
+      "post": {
+        "tags": [
+          "user-management"
+        ],
+        "summary": "User logout",
+        "description": "Logout user and invalidate session",
+        "operationId": "logout_user_v1_users_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/users/profile": {
+      "get": {
+        "tags": [
+          "user-management"
+        ],
+        "summary": "Get user profile",
+        "description": "Get current user's profile information",
+        "operationId": "get_user_profile_v1_users_profile_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfile"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "user-management"
+        ],
+        "summary": "Update user profile",
+        "description": "Update user profile information",
+        "operationId": "update_user_profile_v1_users_profile_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/users/api-key": {
+      "get": {
+        "tags": [
+          "user-management"
+        ],
+        "summary": "Get API key",
+        "description": "Get user's API key (requires email verification if enabled)",
+        "operationId": "get_api_key_v1_users_api_key_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIKeyResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/users/api-key/regenerate": {
+      "post": {
+        "tags": [
+          "user-management"
+        ],
+        "summary": "Regenerate API key",
+        "description": "Regenerate user's API key (requires email verification if enabled)",
+        "operationId": "regenerate_api_key_v1_users_api_key_regenerate_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegenerateAPIKeyResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/users/email": {
+      "put": {
+        "tags": [
+          "user-management"
+        ],
+        "summary": "Update email address",
+        "description": "Update user's email address with password verification",
+        "operationId": "update_email_v1_users_email_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/users/password": {
+      "put": {
+        "tags": [
+          "user-management"
+        ],
+        "summary": "Reset password",
+        "description": "Reset user's password with current password verification",
+        "operationId": "reset_password_v1_users_password_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/users/account": {
+      "delete": {
+        "tags": [
+          "user-management"
+        ],
+        "summary": "Delete account",
+        "description": "Delete user account with data archiving",
+        "operationId": "delete_account_v1_users_account_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/email/send-verification": {
+      "post": {
+        "tags": [
+          "email-verification"
+        ],
+        "summary": "Send email verification",
+        "description": "Send verification email to current user",
+        "operationId": "send_verification_email_v1_email_send_verification_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendVerificationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/email/verify": {
+      "post": {
+        "tags": [
+          "email-verification"
+        ],
+        "summary": "Verify email with OTP",
+        "description": "Verify email address using OTP code",
+        "operationId": "verify_email_v1_email_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/email/resend": {
+      "post": {
+        "tags": [
+          "email-verification"
+        ],
+        "summary": "Resend verification email",
+        "description": "Resend verification email with rate limiting",
+        "operationId": "resend_verification_email_v1_email_resend_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendVerificationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/email/status": {
+      "get": {
+        "tags": [
+          "email-verification"
+        ],
+        "summary": "Get verification status",
+        "description": "Get current user's email verification status",
+        "operationId": "get_verification_status_v1_email_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Verification Status V1 Email Status Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/admin-panel/login": {
+      "post": {
+        "tags": [
+          "admin-panel"
+        ],
+        "summary": "Admin login",
+        "description": "Authenticate admin user and create session",
+        "operationId": "admin_login_v1_admin_panel_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLoginResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin-panel/create-admin": {
+      "post": {
+        "tags": [
+          "admin-panel"
+        ],
+        "summary": "Create new admin",
+        "description": "Create a new admin user (super admin only)",
+        "operationId": "create_admin_v1_admin_panel_create_admin_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAdminRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/admin-panel/users": {
+      "get": {
+        "tags": [
+          "admin-panel"
+        ],
+        "summary": "Get users list",
+        "description": "Get paginated list of users with filtering options",
+        "operationId": "get_users_v1_admin_panel_users_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "user_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Type"
+            }
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Active"
+            }
+          },
+          {
+            "name": "is_verified",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Verified"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin-panel/users/{user_id}": {
+      "get": {
+        "tags": [
+          "admin-panel"
+        ],
+        "summary": "Get user details",
+        "description": "Get detailed information about a specific user",
+        "operationId": "get_user_details_v1_admin_panel_users__user_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfile"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin-panel"
+        ],
+        "summary": "Update user",
+        "description": "Update user information",
+        "operationId": "update_user_v1_admin_panel_users__user_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin-panel"
+        ],
+        "summary": "Delete user",
+        "description": "Delete user account (super admin only)",
+        "operationId": "delete_user_v1_admin_panel_users__user_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "Admin deletion",
+              "title": "Reason"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin-panel/users/{user_id}/regenerate-api-key": {
+      "post": {
+        "tags": [
+          "admin-panel"
+        ],
+        "summary": "Regenerate user API key",
+        "description": "Regenerate API key for a specific user",
+        "operationId": "regenerate_user_api_key_v1_admin_panel_users__user_id__regenerate_api_key_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin-panel/statistics": {
+      "get": {
+        "tags": [
+          "admin-panel"
+        ],
+        "summary": "Get system statistics",
+        "description": "Get comprehensive system statistics and metrics",
+        "operationId": "get_system_statistics_v1_admin_panel_statistics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get System Statistics V1 Admin Panel Statistics Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/admin-panel/security-logs": {
+      "get": {
+        "tags": [
+          "admin-panel"
+        ],
+        "summary": "Get security logs",
+        "description": "Get security event logs with pagination",
+        "operationId": "get_security_logs_v1_admin_panel_security_logs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "event_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event Type"
+            }
+          },
+          {
+            "name": "severity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Severity"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityLogResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin-panel/message-logs/{user_id}": {
+      "get": {
+        "tags": [
+          "admin-panel"
+        ],
+        "summary": "Get user message logs",
+        "description": "Get message logs for a specific user",
+        "operationId": "get_user_message_logs_v1_admin_panel_message_logs__user_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageLogResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin-panel/health": {
+      "get": {
+        "tags": [
+          "admin-panel"
+        ],
+        "summary": "System health check",
+        "description": "Get system health status and metrics",
+        "operationId": "get_system_health_v1_admin_panel_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemHealth"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/support/login": {
+      "post": {
+        "tags": [
+          "support-staff"
+        ],
+        "summary": "Support staff login",
+        "description": "Authenticate support staff and create session",
+        "operationId": "support_staff_login_v1_support_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportStaffLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportStaffLoginResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/support/create": {
+      "post": {
+        "tags": [
+          "support-staff"
+        ],
+        "summary": "Create support staff",
+        "description": "Create a new support staff member (admin only)",
+        "operationId": "create_support_staff_v1_support_create_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSupportStaffRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/support/profile": {
+      "get": {
+        "tags": [
+          "support-staff"
+        ],
+        "summary": "Get support staff profile",
+        "description": "Get current support staff profile information",
+        "operationId": "get_support_staff_profile_v1_support_profile_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportStaffInfo"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/support/permissions": {
+      "get": {
+        "tags": [
+          "support-staff"
+        ],
+        "summary": "Get permissions",
+        "description": "Get current support staff permissions",
+        "operationId": "get_support_staff_permissions_v1_support_permissions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Support Staff Permissions V1 Support Permissions Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/support/users": {
+      "get": {
+        "tags": [
+          "support-staff"
+        ],
+        "summary": "Get users list (support staff)",
+        "description": "Get paginated list of users (support staff view)",
+        "operationId": "get_users_support_v1_support_users_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "user_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Type"
+            }
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Active"
+            }
+          },
+          {
+            "name": "is_verified",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Verified"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Users Support V1 Support Users Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/support/users/{user_id}": {
+      "get": {
+        "tags": [
+          "support-staff"
+        ],
+        "summary": "Get user details (support staff)",
+        "description": "Get detailed information about a specific user",
+        "operationId": "get_user_details_support_v1_support_users__user_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get User Details Support V1 Support Users  User Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "support-staff"
+        ],
+        "summary": "Update user (support staff)",
+        "description": "Update user information with support staff permissions",
+        "operationId": "update_user_support_v1_support_users__user_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/support/users/{user_id}/reset-password": {
+      "post": {
+        "tags": [
+          "support-staff"
+        ],
+        "summary": "Reset user password (support staff)",
+        "description": "Reset user password (support level and above)",
+        "operationId": "reset_user_password_support_v1_support_users__user_id__reset_password_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "new_password",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "New Password"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/support/users/{user_id}/credits": {
+      "put": {
+        "tags": [
+          "support-staff"
+        ],
+        "summary": "Update user credits (support staff)",
+        "description": "Update user conversation credits (support level and above)",
+        "operationId": "update_user_credits_support_v1_support_users__user_id__credits_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_update_user_credits_support_v1_support_users__user_id__credits_put"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/support/users/{user_id}/plan": {
+      "put": {
+        "tags": [
+          "support-staff"
+        ],
+        "summary": "Update user subscription plan (support staff)",
+        "description": "Update user subscription plan (support level and above)",
+        "operationId": "update_user_plan_support_v1_support_users__user_id__plan_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "subscription_plan",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Subscription Plan"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/monitoring/health": {
+      "get": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Health check",
+        "description": "Check system health and component status",
+        "operationId": "health_check_v1_monitoring_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/monitoring/metrics": {
+      "get": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "System metrics",
+        "description": "Get detailed system metrics and statistics",
+        "operationId": "get_metrics_v1_monitoring_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/monitoring/usage": {
+      "get": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "User usage statistics",
+        "description": "Get usage statistics for the current user",
+        "operationId": "get_user_usage_v1_monitoring_usage_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/monitoring/flush-logs": {
+      "post": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Flush message logs",
+        "description": "Manually trigger message log flush (admin feature)",
+        "operationId": "flush_message_logs_v1_monitoring_flush_logs_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/monitoring/queue-status": {
+      "get": {
+        "tags": [
+          "monitoring"
+        ],
+        "summary": "Message queue status",
+        "description": "Get current message queue status",
+        "operationId": "get_queue_status_v1_monitoring_queue_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
           }
         }
       }
     }
   },
-  "tags": [
-    {
-      "name": "chat",
-      "description": "Chat completion endpoints for prompt enhancement"
+  "components": {
+    "schemas": {
+      "APIKeyResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "api_key": {
+            "type": "string",
+            "title": "Api Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "api_key"
+        ],
+        "title": "APIKeyResponse"
+      },
+      "AdminInfo": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "is_super_admin": {
+            "type": "boolean",
+            "title": "Is Super Admin"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permissions"
+          },
+          "last_login": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "name",
+          "email",
+          "is_super_admin",
+          "permissions",
+          "last_login"
+        ],
+        "title": "AdminInfo"
+      },
+      "AdminLoginRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username",
+            "description": "Admin username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password",
+            "description": "Admin password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "AdminLoginRequest"
+      },
+      "AdminLoginResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "admin": {
+            "$ref": "#/components/schemas/AdminInfo"
+          },
+          "session": {
+            "$ref": "#/components/schemas/SessionInfo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "admin",
+          "session"
+        ],
+        "title": "AdminLoginResponse"
+      },
+      "AdminResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "AdminResponse"
+      },
+      "BatchRequest": {
+        "properties": {
+          "batch": {
+            "items": {
+              "$ref": "#/components/schemas/BatchTask"
+            },
+            "type": "array",
+            "title": "Batch"
+          },
+          "level": {
+            "$ref": "#/components/schemas/Level"
+          },
+          "enable_research": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enable Research",
+            "default": false
+          },
+          "research_depth": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchDepth"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "basic"
+          },
+          "parallel": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parallel",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "batch",
+          "level"
+        ],
+        "title": "BatchRequest"
+      },
+      "BatchResponse": {
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "title": "Batch Id"
+          },
+          "total_tasks": {
+            "type": "integer",
+            "title": "Total Tasks"
+          },
+          "successful_tasks": {
+            "type": "integer",
+            "title": "Successful Tasks"
+          },
+          "failed_tasks": {
+            "type": "integer",
+            "title": "Failed Tasks"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BatchTaskResult"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "total_tokens_used": {
+            "type": "integer",
+            "title": "Total Tokens Used"
+          },
+          "total_processing_time_ms": {
+            "type": "integer",
+            "title": "Total Processing Time Ms"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "batch_id",
+          "total_tasks",
+          "successful_tasks",
+          "failed_tasks",
+          "results",
+          "total_tokens_used",
+          "total_processing_time_ms",
+          "created_at"
+        ],
+        "title": "BatchResponse"
+      },
+      "BatchTask": {
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "r_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RType"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "bpe"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature",
+            "default": 0.7
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
+          "top_p": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top P"
+          },
+          "frequency_penalty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency Penalty"
+          },
+          "presence_penalty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presence Penalty"
+          },
+          "stop": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "title": "BatchTask"
+      },
+      "BatchTaskResult": {
+        "properties": {
+          "task_index": {
+            "type": "integer",
+            "title": "Task Index"
+          },
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "response": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatCompletionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "processing_time_ms": {
+            "type": "integer",
+            "title": "Processing Time Ms"
+          },
+          "tokens_used": {
+            "type": "integer",
+            "title": "Tokens Used"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_index",
+          "success",
+          "processing_time_ms",
+          "tokens_used"
+        ],
+        "title": "BatchTaskResult"
+      },
+      "Body_update_user_credits_support_v1_support_users__user_id__credits_put": {
+        "properties": {
+          "credits": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Credits"
+          },
+          "limits": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Limits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "credits",
+          "limits"
+        ],
+        "title": "Body_update_user_credits_support_v1_support_users__user_id__credits_put"
+      },
+      "ChatCompletionRequest": {
+        "properties": {
+          "level": {
+            "$ref": "#/components/schemas/Level"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            },
+            "type": "array",
+            "title": "Messages"
+          },
+          "r_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ai_research": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Research",
+            "default": false
+          },
+          "research_depth": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResearchDepth"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "basic"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature",
+            "default": 0.7
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
+          "top_p": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top P"
+          },
+          "frequency_penalty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency Penalty"
+          },
+          "presence_penalty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presence Penalty"
+          },
+          "stop": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop"
+          }
+        },
+        "type": "object",
+        "required": [
+          "level",
+          "messages"
+        ],
+        "title": "ChatCompletionRequest"
+      },
+      "ChatCompletionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "object": {
+            "type": "string",
+            "title": "Object",
+            "default": "chat.completion"
+          },
+          "created": {
+            "type": "integer",
+            "title": "Created"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "choices": {
+            "items": {
+              "$ref": "#/components/schemas/Choice"
+            },
+            "type": "array",
+            "title": "Choices"
+          },
+          "usage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Usage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created",
+          "model",
+          "choices"
+        ],
+        "title": "ChatCompletionResponse"
+      },
+      "Choice": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index"
+          },
+          "message": {
+            "$ref": "#/components/schemas/Message"
+          },
+          "finish_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finish Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "message"
+        ],
+        "title": "Choice"
+      },
+      "CreateAdminRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 3,
+            "title": "Username"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "title": "Password"
+          },
+          "is_super_admin": {
+            "type": "boolean",
+            "title": "Is Super Admin",
+            "default": false
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permissions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "name",
+          "email",
+          "password"
+        ],
+        "title": "CreateAdminRequest"
+      },
+      "CreateSupportStaffRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 3,
+            "title": "Username"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "title": "Password"
+          },
+          "staff_level": {
+            "$ref": "#/components/schemas/StaffLevel",
+            "default": "new"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "name",
+          "email",
+          "password"
+        ],
+        "title": "CreateSupportStaffRequest"
+      },
+      "DeleteAccountRequest": {
+        "properties": {
+          "password": {
+            "type": "string",
+            "title": "Password",
+            "description": "Current password for verification"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "Deletion reason",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "password"
+        ],
+        "title": "DeleteAccountRequest"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "error": {
+            "type": "string",
+            "title": "Error"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error",
+          "message"
+        ],
+        "title": "ErrorResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "uptime_seconds": {
+            "type": "number",
+            "title": "Uptime Seconds"
+          },
+          "redis_connected": {
+            "type": "boolean",
+            "title": "Redis Connected"
+          },
+          "wapi_accessible": {
+            "type": "boolean",
+            "title": "Wapi Accessible"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "uptime_seconds",
+          "redis_connected",
+          "wapi_accessible"
+        ],
+        "title": "HealthResponse"
+      },
+      "Level": {
+        "type": "string",
+        "enum": [
+          "low",
+          "medium",
+          "high",
+          "ultra"
+        ],
+        "title": "Level"
+      },
+      "Message": {
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/MessageRole"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "Message"
+      },
+      "MessageLogEntry": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "messages": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Messages"
+          },
+          "research_enabled": {
+            "type": "boolean",
+            "title": "Research Enabled"
+          },
+          "r_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "R Type"
+          },
+          "tokens_used": {
+            "type": "integer",
+            "title": "Tokens Used"
+          },
+          "processing_time_ms": {
+            "type": "integer",
+            "title": "Processing Time Ms"
+          },
+          "ip_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Address"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "email",
+          "model",
+          "messages",
+          "research_enabled",
+          "r_type",
+          "tokens_used",
+          "processing_time_ms",
+          "ip_address",
+          "timestamp"
+        ],
+        "title": "MessageLogEntry"
+      },
+      "MessageLogResponse": {
+        "properties": {
+          "logs": {
+            "items": {
+              "$ref": "#/components/schemas/MessageLogEntry"
+            },
+            "type": "array",
+            "title": "Logs"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "logs",
+          "total_count",
+          "page",
+          "page_size"
+        ],
+        "title": "MessageLogResponse"
+      },
+      "MessageRole": {
+        "type": "string",
+        "enum": [
+          "system",
+          "user",
+          "assistant"
+        ],
+        "title": "MessageRole"
+      },
+      "RType": {
+        "type": "string",
+        "enum": [
+          "bpe",
+          "bcot",
+          "hcot",
+          "react",
+          "tot"
+        ],
+        "title": "RType"
+      },
+      "RefreshTokenRequest": {
+        "properties": {
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token",
+            "description": "Refresh token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "refresh_token"
+        ],
+        "title": "RefreshTokenRequest"
+      },
+      "RefreshTokenResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "session": {
+            "$ref": "#/components/schemas/SessionInfo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "session"
+        ],
+        "title": "RefreshTokenResponse"
+      },
+      "RegenerateAPIKeyResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "api_key": {
+            "type": "string",
+            "title": "Api Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "api_key"
+        ],
+        "title": "RegenerateAPIKeyResponse"
+      },
+      "ResearchDepth": {
+        "type": "string",
+        "enum": [
+          "basic",
+          "medium",
+          "high"
+        ],
+        "title": "ResearchDepth"
+      },
+      "ResendVerificationRequest": {
+        "properties": {},
+        "type": "object",
+        "title": "ResendVerificationRequest",
+        "description": "Request model for resending verification email"
+      },
+      "ResetPasswordRequest": {
+        "properties": {
+          "current_password": {
+            "type": "string",
+            "title": "Current Password",
+            "description": "Current password"
+          },
+          "new_password": {
+            "type": "string",
+            "minLength": 8,
+            "title": "New Password",
+            "description": "New password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "ResetPasswordRequest"
+      },
+      "SecurityLogEntry": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "ip_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Address"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "event_type",
+          "user_id",
+          "username",
+          "ip_address",
+          "details",
+          "severity",
+          "timestamp"
+        ],
+        "title": "SecurityLogEntry"
+      },
+      "SecurityLogResponse": {
+        "properties": {
+          "logs": {
+            "items": {
+              "$ref": "#/components/schemas/SecurityLogEntry"
+            },
+            "type": "array",
+            "title": "Logs"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "logs",
+          "total_count",
+          "page",
+          "page_size"
+        ],
+        "title": "SecurityLogResponse"
+      },
+      "SendVerificationRequest": {
+        "properties": {},
+        "type": "object",
+        "title": "SendVerificationRequest",
+        "description": "Request model for sending verification email"
+      },
+      "SessionInfo": {
+        "properties": {
+          "session_token": {
+            "type": "string",
+            "title": "Session Token"
+          },
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token"
+          },
+          "expires_at": {
+            "type": "string",
+            "title": "Expires At"
+          },
+          "refresh_expires_at": {
+            "type": "string",
+            "title": "Refresh Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_token",
+          "refresh_token",
+          "expires_at",
+          "refresh_expires_at"
+        ],
+        "title": "SessionInfo"
+      },
+      "StaffLevel": {
+        "type": "string",
+        "enum": [
+          "new",
+          "support",
+          "advanced"
+        ],
+        "title": "StaffLevel"
+      },
+      "SuccessResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "default": true
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "SuccessResponse"
+      },
+      "SupportStaffInfo": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "staff_level": {
+            "type": "string",
+            "title": "Staff Level"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "time_created": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Time Created"
+          },
+          "created_by": {
+            "type": "string",
+            "title": "Created By"
+          },
+          "last_login": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "name",
+          "email",
+          "staff_level",
+          "is_active",
+          "time_created",
+          "created_by",
+          "last_login"
+        ],
+        "title": "SupportStaffInfo"
+      },
+      "SupportStaffLoginRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username",
+            "description": "Staff username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password",
+            "description": "Staff password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "SupportStaffLoginRequest"
+      },
+      "SupportStaffLoginResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "staff": {
+            "$ref": "#/components/schemas/SupportStaffInfo"
+          },
+          "session": {
+            "$ref": "#/components/schemas/SessionInfo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "staff",
+          "session"
+        ],
+        "title": "SupportStaffLoginResponse"
+      },
+      "SystemHealth": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "database_connected": {
+            "type": "boolean",
+            "title": "Database Connected"
+          },
+          "redis_connected": {
+            "type": "boolean",
+            "title": "Redis Connected"
+          },
+          "total_users": {
+            "type": "integer",
+            "title": "Total Users"
+          },
+          "active_sessions": {
+            "type": "integer",
+            "title": "Active Sessions"
+          },
+          "system_load": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "System Load"
+          },
+          "uptime_seconds": {
+            "type": "number",
+            "title": "Uptime Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "database_connected",
+          "redis_connected",
+          "total_users",
+          "active_sessions",
+          "system_load",
+          "uptime_seconds"
+        ],
+        "title": "SystemHealth"
+      },
+      "SystemPromptUpdate": {
+        "properties": {
+          "r_type": {
+            "$ref": "#/components/schemas/RType"
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "r_type",
+          "prompt"
+        ],
+        "title": "SystemPromptUpdate"
+      },
+      "UpdateEmailRequest": {
+        "properties": {
+          "new_email": {
+            "type": "string",
+            "format": "email",
+            "title": "New Email",
+            "description": "New email address"
+          },
+          "current_password": {
+            "type": "string",
+            "title": "Current Password",
+            "description": "Current password for verification"
+          }
+        },
+        "type": "object",
+        "required": [
+          "new_email",
+          "current_password"
+        ],
+        "title": "UpdateEmailRequest"
+      },
+      "UpdateProfileRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "about_me": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "About Me"
+          },
+          "hobbies": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hobbies"
+          }
+        },
+        "type": "object",
+        "title": "UpdateProfileRequest"
+      },
+      "UpdateUserRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "about_me": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "About Me"
+          },
+          "hobbies": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hobbies"
+          },
+          "user_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subscription_plan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subscription Plan"
+          },
+          "credits": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credits"
+          },
+          "limits": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limits"
+          },
+          "access_rtype": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Access Rtype"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "additional_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Additional Notes"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "is_verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Verified"
+          }
+        },
+        "type": "object",
+        "title": "UpdateUserRequest"
+      },
+      "Usage": {
+        "properties": {
+          "prompt_tokens": {
+            "type": "integer",
+            "title": "Prompt Tokens"
+          },
+          "completion_tokens": {
+            "type": "integer",
+            "title": "Completion Tokens"
+          },
+          "total_tokens": {
+            "type": "integer",
+            "title": "Total Tokens"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prompt_tokens",
+          "completion_tokens",
+          "total_tokens"
+        ],
+        "title": "Usage"
+      },
+      "UserInfo": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "user_type": {
+            "type": "string",
+            "title": "User Type"
+          },
+          "subscription_plan": {
+            "type": "string",
+            "title": "Subscription Plan"
+          },
+          "is_verified": {
+            "type": "boolean",
+            "title": "Is Verified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "name",
+          "email",
+          "user_type",
+          "subscription_plan",
+          "is_verified"
+        ],
+        "title": "UserInfo"
+      },
+      "UserListResponse": {
+        "properties": {
+          "users": {
+            "items": {
+              "$ref": "#/components/schemas/UserProfile"
+            },
+            "type": "array",
+            "title": "Users"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "users",
+          "total_count",
+          "page",
+          "page_size"
+        ],
+        "title": "UserListResponse"
+      },
+      "UserLoginRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email",
+            "description": "Email address"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password",
+            "description": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "UserLoginRequest"
+      },
+      "UserLoginResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserInfo"
+          },
+          "session": {
+            "$ref": "#/components/schemas/SessionInfo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "user",
+          "session"
+        ],
+        "title": "UserLoginResponse"
+      },
+      "UserProfile": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "about_me": {
+            "type": "string",
+            "title": "About Me"
+          },
+          "hobbies": {
+            "type": "string",
+            "title": "Hobbies"
+          },
+          "user_type": {
+            "type": "string",
+            "title": "User Type"
+          },
+          "time_created": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Time Created"
+          },
+          "subscription_plan": {
+            "type": "string",
+            "title": "Subscription Plan"
+          },
+          "credits": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Credits"
+          },
+          "limits": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Limits"
+          },
+          "access_rtype": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Access Rtype"
+          },
+          "level": {
+            "type": "string",
+            "title": "Level"
+          },
+          "additional_notes": {
+            "type": "string",
+            "title": "Additional Notes"
+          },
+          "is_verified": {
+            "type": "boolean",
+            "title": "Is Verified"
+          },
+          "last_login": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login"
+          },
+          "last_activity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Activity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "name",
+          "email",
+          "about_me",
+          "hobbies",
+          "user_type",
+          "time_created",
+          "subscription_plan",
+          "credits",
+          "limits",
+          "access_rtype",
+          "level",
+          "additional_notes",
+          "is_verified",
+          "last_login",
+          "last_activity"
+        ],
+        "title": "UserProfile"
+      },
+      "UserRegistrationRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 3,
+            "title": "Username",
+            "description": "Unique username"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 2,
+            "title": "Name",
+            "description": "Full name"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email",
+            "description": "Email address"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "title": "Password",
+            "description": "Password (min 8 chars, 1 number)"
+          },
+          "user_type": {
+            "$ref": "#/components/schemas/UserType",
+            "description": "Account type",
+            "default": "Personal"
+          },
+          "about_me": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "About Me",
+            "description": "About me section",
+            "default": ""
+          },
+          "hobbies": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hobbies",
+            "description": "Hobbies",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "name",
+          "email",
+          "password"
+        ],
+        "title": "UserRegistrationRequest"
+      },
+      "UserRegistrationResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "api_key": {
+            "type": "string",
+            "title": "Api Key"
+          },
+          "verification_required": {
+            "type": "boolean",
+            "title": "Verification Required"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "user_id",
+          "username",
+          "email",
+          "api_key",
+          "verification_required"
+        ],
+        "title": "UserRegistrationResponse"
+      },
+      "UserType": {
+        "type": "string",
+        "enum": [
+          "Personal",
+          "Business"
+        ],
+        "title": "UserType"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VerificationResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "title": "VerificationResponse",
+        "description": "Response model for verification operations"
+      },
+      "VerifyEmailRequest": {
+        "properties": {
+          "otp_code": {
+            "type": "string",
+            "title": "Otp Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "otp_code"
+        ],
+        "title": "VerifyEmailRequest",
+        "description": "Request model for email verification"
+      }
     },
-    {
-      "name": "batch",
-      "description": "Batch processing endpoints for multiple prompts"
-    },
-    {
-      "name": "user-management",
-      "description": "User registration, authentication, and profile management"
-    },
-    {
-      "name": "admin-panel",
-      "description": "Administrative endpoints for system management"
-    },
-    {
-      "name": "support-staff",
-      "description": "Support staff management endpoints"
-    },
-    {
-      "name": "monitoring",
-      "description": "System monitoring and health check endpoints"
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
     }
-  ]
+  }
 }

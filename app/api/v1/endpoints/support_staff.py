@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
 from app.database.database import get_db_session
-from app.database.models import SupportStaff, User
+from app.database.models import SupportStaff, User, Admin
 from app.models.user_schemas import (
     SupportStaffLoginRequest,
     SupportStaffLoginResponse,
