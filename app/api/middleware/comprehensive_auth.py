@@ -335,11 +335,31 @@ def require_verified_user():
     return verified_user_dependency
 
 
-# Credit check dependencies
+# Credit check dependencies for MongoDB users
+async def get_mongodb_user_with_credits(
+    current_user: Dict[str, Any] = Depends(get_current_user_api_mongodb),
+    request: Request = None
+) -> Dict[str, Any]:
+    """Get MongoDB user and check if they have conversation credits"""
+    
+    from app.api.middleware.api_usage_middleware import check_api_usage_and_credits
+    
+    # Check API usage and credits
+    usage_error = await check_api_usage_and_credits(request, current_user, estimated_cost=1)
+    if usage_error:
+        raise HTTPException(
+            status_code=usage_error.status_code,
+            detail=usage_error.body.decode() if hasattr(usage_error.body, 'decode') else str(usage_error.body)
+        )
+    
+    return current_user
+
+
+# Legacy credit check for SQLite users
 async def get_user_with_credits(
     current_user: User = Depends(get_current_user_api)
 ) -> User:
-    """Get user and check if they have conversation credits"""
+    """Get user and check if they have conversation credits (SQLite version)"""
     
     limits = current_user.limits or {"conversation_limit": 0, "reset": 0}
     conversation_limit = limits.get("conversation_limit", 0)
@@ -417,7 +437,7 @@ async def get_current_user_api_mongodb(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     request: Request = None
 ) -> Dict[str, Any]:
-    """Get current user from MongoDB using API key"""
+    """Get current user from MongoDB using API key with usage tracking"""
     
     if not credentials:
         raise AuthenticationError("API key required")
@@ -431,6 +451,10 @@ async def get_current_user_api_mongodb(
     # Check if email verification is required for API access
     if settings.email_verification_enabled and not user.get("is_verified", False):
         raise AuthenticationError("Email verification required for API access")
+    
+    # Check if user account is active
+    if not user.get("is_active", True):
+        raise AuthenticationError("Account is inactive")
     
     return user
 
@@ -450,12 +474,12 @@ async def get_optional_current_user_mongodb(
         
         # Try session token first
         user = await mongodb_user_service.validate_session(token_or_key)
-        if user:
+        if user and user.get("is_active", True):
             return user
         
         # Try API key
         user = await mongodb_user_service.validate_api_key(token_or_key)
-        if user:
+        if user and user.get("is_active", True):
             return user
         
         return None
