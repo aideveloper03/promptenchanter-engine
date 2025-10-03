@@ -109,10 +109,16 @@ class MongoDBUserService:
             # Send verification email if enabled
             verification_required = False
             if settings.email_verification_enabled:
-                verification_result = await email_service.send_verification_email(
-                    user_id, email.lower(), name
-                )
-                verification_required = verification_result.get("success", False)
+                try:
+                    verification_result = await email_service.send_verification_email(
+                        str(user_id), email.lower(), name
+                    )
+                    verification_required = verification_result.get("success", False)
+                    logger.info(f"Email verification result for {username}: {verification_result.get('message', 'Unknown')}")
+                except Exception as email_error:
+                    logger.error(f"Email verification failed for {username}: {email_error}")
+                    # Don't fail registration due to email issues
+                    verification_required = False
             
             await self._log_security_event(
                 "user_registered",
@@ -127,7 +133,7 @@ class MongoDBUserService:
             return {
                 "success": True,
                 "message": "User registered successfully",
-                "user_id": user_id,
+                "user_id": str(user_id),  # Ensure user_id is always a string
                 "username": username,
                 "email": email,
                 "api_key": api_key,
@@ -317,7 +323,7 @@ class MongoDBUserService:
                 "success": True,
                 "message": "Login successful",
                 "user": {
-                    "id": user["_id"],
+                    "id": str(user["_id"]),  # Ensure id is always a string
                     "username": user["username"],
                     "name": user["name"],
                     "email": user["email"],
@@ -542,7 +548,7 @@ class MongoDBUserService:
         
         # Validate email
         try:
-            validated_email = validate_email(email)
+            validated_email = validate_email(email, check_deliverability=False)
             email = validated_email.email
         except EmailNotValidError:
             errors.append("Invalid email format")

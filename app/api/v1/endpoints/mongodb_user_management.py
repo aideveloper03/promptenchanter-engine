@@ -162,7 +162,7 @@ async def get_user_profile(
     """Get user profile"""
     
     return UserProfile(
-        id=current_user["_id"],
+        id=str(current_user["_id"]),  # Ensure id is always a string
         username=current_user["username"],
         name=current_user["name"],
         email=current_user["email"],
@@ -209,7 +209,7 @@ async def update_user_profile(
         
         # Update user
         await users_collection.update_one(
-            {"_id": current_user["_id"]},
+            {"_id": current_user["_id"]},  # Keep as ObjectId for MongoDB query
             {"$set": update_data}
         )
         
@@ -238,8 +238,8 @@ async def get_api_key(
 ):
     """Get user's API key"""
     
-    try:
-        result = await mongodb_user_service.get_api_key(current_user["_id"])
+        try:
+            result = await mongodb_user_service.get_api_key(str(current_user["_id"]))
         
         return APIKeyResponse(
             success=result["success"],
@@ -268,7 +268,7 @@ async def regenerate_api_key(
 ):
     """Regenerate user's API key"""
     
-    result = await mongodb_user_service.regenerate_api_key(current_user["_id"])
+    result = await mongodb_user_service.regenerate_api_key(str(current_user["_id"]))
     
     return RegenerateAPIKeyResponse(**result)
 
@@ -316,7 +316,7 @@ async def update_email(
             update_data["is_verified"] = False
         
         await users_collection.update_one(
-            {"_id": current_user["_id"]},
+            {"_id": current_user["_id"]},  # Keep as ObjectId for MongoDB query
             {"$set": update_data}
         )
         
@@ -371,7 +371,7 @@ async def reset_password(
         # Update password
         users_collection = await get_mongodb_collection('users')
         await users_collection.update_one(
-            {"_id": current_user["_id"]},
+            {"_id": current_user["_id"]},  # Keep as ObjectId for MongoDB query
             {"$set": {
                 "password_hash": password_manager.hash_password(request.new_password),
                 "failed_login_attempts": 0,
@@ -422,7 +422,7 @@ async def delete_account(
         deleted_users_collection = await get_mongodb_collection('deleted_users')
         deleted_user_doc = {
             "_id": f"deleted_{current_user['_id']}",
-            "original_user_id": current_user["_id"],
+            "original_user_id": str(current_user["_id"]),  # Store as string for consistency
             "username": current_user["username"],
             "name": current_user["name"],
             "email": current_user["email"],
@@ -442,9 +442,9 @@ async def delete_account(
         messages_collection = await get_mongodb_collection('message_logs')
         
         # Delete in order: sessions, messages, then user
-        await sessions_collection.delete_many({"user_id": current_user["_id"]})
-        await messages_collection.delete_many({"user_id": current_user["_id"]})
-        await users_collection.delete_one({"_id": current_user["_id"]})
+        await sessions_collection.delete_many({"user_id": current_user["_id"]})  # Keep as ObjectId for MongoDB query
+        await messages_collection.delete_many({"user_id": current_user["_id"]})  # Keep as ObjectId for MongoDB query
+        await users_collection.delete_one({"_id": current_user["_id"]})  # Keep as ObjectId for MongoDB query
         
         logger.info(f"Account deleted for user: {current_user['username']}")
         

@@ -34,11 +34,14 @@ class EmailService:
         """Send email verification with OTP"""
         
         if not settings.email_verification_enabled:
+            logger.info("Email verification is disabled, skipping email send")
             return {"success": True, "message": "Email verification is disabled"}
         
         if not self.smtp_configured:
-            logger.warning("SMTP not configured, cannot send verification email")
-            return {"success": False, "message": "Email service not configured"}
+            logger.warning("SMTP not configured properly. Missing: host=%s, username=%s, password=%s", 
+                         bool(settings.smtp_host), bool(settings.smtp_username), bool(settings.smtp_password))
+            # Return success but log the issue - don't fail registration due to email config
+            return {"success": True, "message": "Email service not configured, verification skipped"}
         
         try:
             # Generate OTP
@@ -97,11 +100,20 @@ class EmailService:
                     "expires_at": expires_at.isoformat()
                 }
             else:
-                return {"success": False, "message": "Failed to send verification email"}
+                logger.warning(f"Failed to send verification email to {email}, but continuing registration")
+                # Don't fail the registration due to email issues
+                return {
+                    "success": True, 
+                    "message": "Registration completed, but verification email could not be sent"
+                }
                 
         except Exception as e:
             logger.error(f"Failed to send verification email to {email}: {e}")
-            return {"success": False, "message": "Failed to send verification email"}
+            # Don't fail registration due to email issues
+            return {
+                "success": True, 
+                "message": "Registration completed, but verification email could not be sent due to server error"
+            }
     
     async def verify_email_otp(self, user_id: str, email: str, otp_code: str) -> Dict[str, Any]:
         """Verify email using OTP code"""
@@ -328,20 +340,41 @@ class EmailService:
         """Send email via SMTP (blocking operation)"""
         
         try:
-            # Create SMTP connection
+            # Create SMTP connection with timeout
             if settings.smtp_use_tls:
-                server = smtplib.SMTP(settings.smtp_host, settings.smtp_port)
+                server = smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=30)
                 server.starttls()
             else:
-                server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port)
+                server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=30)
             
-            # Login and send
-            server.login(settings.smtp_username, settings.smtp_password)
+            # Enable debug mode for better error tracking
+            server.set_debuglevel(0)  # Set to 1 for debug output
+            
+            # Login with better error handling
+            try:
+                server.login(settings.smtp_username, settings.smtp_password)
+            except smtplib.SMTPAuthenticationError as auth_error:
+                logger.error(f"SMTP Authentication failed for {settings.smtp_username}: {auth_error}")
+                logger.error("Please check your email credentials and app password settings")
+                server.quit()
+                return False
+            except smtplib.SMTPException as smtp_error:
+                logger.error(f"SMTP error during login: {smtp_error}")
+                server.quit()
+                return False
+            
+            # Send email
             server.send_message(msg, to_addrs=[to_email])
             server.quit()
             
             return True
             
+        except smtplib.SMTPConnectError as e:
+            logger.error(f"Failed to connect to SMTP server {settings.smtp_host}:{settings.smtp_port}: {e}")
+            return False
+        except smtplib.SMTPServerDisconnected as e:
+            logger.error(f"SMTP server disconnected unexpectedly: {e}")
+            return False
         except Exception as e:
             logger.error(f"SMTP error sending to {to_email}: {e}")
             return False

@@ -38,7 +38,7 @@ class UserRegistrationRequest(BaseModel):
 class UserRegistrationResponse(BaseModel):
     success: bool
     message: str
-    user_id: int
+    user_id: str  # Changed from int to str for MongoDB ObjectId compatibility
     username: str
     email: str
     api_key: str
@@ -52,7 +52,7 @@ class UserLoginRequest(BaseModel):
 
 
 class UserInfo(BaseModel):
-    id: int
+    id: str  # Changed from int to str for MongoDB ObjectId compatibility
     username: str
     name: str
     email: str
@@ -100,7 +100,7 @@ class RegenerateAPIKeyResponse(BaseModel):
 
 # User Profile Schemas
 class UserProfile(BaseModel):
-    id: int
+    id: str  # Changed from int to str for MongoDB ObjectId compatibility
     username: str
     name: str
     email: str
@@ -147,7 +147,7 @@ class AdminLoginRequest(BaseModel):
 
 
 class AdminInfo(BaseModel):
-    id: int
+    id: str  # Changed from int to str for MongoDB ObjectId compatibility
     username: str
     name: str
     email: str
@@ -205,7 +205,7 @@ class CreateSupportStaffRequest(BaseModel):
 
 
 class SupportStaffInfo(BaseModel):
-    id: int
+    id: str  # Changed from int to str for MongoDB ObjectId compatibility
     username: str
     name: str
     email: str
@@ -230,7 +230,7 @@ class SupportStaffLoginResponse(BaseModel):
 
 # Message Logging Schemas
 class MessageLogEntry(BaseModel):
-    id: int
+    id: str  # Changed from int to str for MongoDB ObjectId compatibility
     username: str
     email: str
     model: str
@@ -252,9 +252,9 @@ class MessageLogResponse(BaseModel):
 
 # Security Schemas
 class SecurityLogEntry(BaseModel):
-    id: int
+    id: str  # Changed from int to str for MongoDB ObjectId compatibility
     event_type: str
-    user_id: Optional[int]
+    user_id: Optional[str]  # Changed from int to str for MongoDB ObjectId compatibility
     username: Optional[str]
     ip_address: Optional[str]
     details: Optional[Dict[str, Any]]
@@ -270,7 +270,7 @@ class SecurityLogResponse(BaseModel):
 
 
 class IPWhitelistEntry(BaseModel):
-    id: int
+    id: str  # Changed from int to str for MongoDB ObjectId compatibility
     ip_address: str
     ip_range: Optional[str]
     description: str
