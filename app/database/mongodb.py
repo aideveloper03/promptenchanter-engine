@@ -199,7 +199,7 @@ mongodb_manager = MongoDBManager()
 
 async def get_mongodb_database() -> AsyncIOMotorDatabase:
     """Get MongoDB database instance"""
-    if not mongodb_manager.database:
+    if mongodb_manager.database is None:
         connected = await mongodb_manager.connect()
         if not connected:
             raise Exception("Failed to connect to MongoDB")
@@ -209,7 +209,7 @@ async def get_mongodb_database() -> AsyncIOMotorDatabase:
 
 async def get_mongodb_collection(name: str) -> AsyncIOMotorCollection:
     """Get MongoDB collection by name"""
-    if not mongodb_manager.database:
+    if mongodb_manager.database is None:
         connected = await mongodb_manager.connect()
         if not connected:
             raise Exception("Failed to connect to MongoDB")
