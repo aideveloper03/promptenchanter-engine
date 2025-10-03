@@ -8,6 +8,7 @@ from app.services.prompt_service import prompt_service
 from app.services.message_logging_service import message_logging_service
 from app.api.v1.deps.common import get_secure_request_logger
 from app.api.middleware.user_auth import authenticate_api_user, user_auth_middleware
+from app.api.middleware.comprehensive_auth import get_current_user_api_mongodb
 from app.database.database import get_db_session
 from app.database.models import User
 from app.utils.logger import RequestLogger, get_logger

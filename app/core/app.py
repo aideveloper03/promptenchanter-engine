@@ -32,14 +32,32 @@ async def lifespan(app: FastAPI):
     # Initialize database
     from app.database.database import init_database
     await init_database()
-    logger.info("Database initialized")
+    logger.info("SQLite database initialized")
+    
+    # Initialize MongoDB
+    try:
+        from app.database.mongodb import mongodb_manager
+        connected = await mongodb_manager.connect()
+        if connected:
+            logger.info("MongoDB connected successfully")
+        else:
+            logger.warning("MongoDB connection failed, falling back to SQLite")
+    except Exception as e:
+        logger.warning(f"MongoDB initialization failed: {e}, falling back to SQLite")
     
     # Create default admin user if none exists
     try:
         from scripts.create_default_admin import create_default_admin
         await create_default_admin()
     except Exception as e:
-        logger.warning(f"Could not create default admin user: {e}")
+        logger.warning(f"Could not create default SQLite admin user: {e}")
+    
+    # Create default MongoDB admin user
+    try:
+        from scripts.create_default_admin_mongodb import create_default_admin as create_mongodb_admin
+        await create_mongodb_admin()
+    except Exception as e:
+        logger.warning(f"Could not create default MongoDB admin user: {e}")
     
     # Connect to cache
     await cache_manager.connect()
@@ -76,6 +94,13 @@ async def lifespan(app: FastAPI):
     # Close database connections
     from app.database.database import close_database
     await close_database()
+    
+    # Close MongoDB connections
+    try:
+        from app.database.mongodb import mongodb_manager
+        await mongodb_manager.disconnect()
+    except Exception as e:
+        logger.warning(f"MongoDB disconnect failed: {e}")
     
     logger.info("PromptEnchanter shut down successfully")
 
