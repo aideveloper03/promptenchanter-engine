@@ -238,8 +238,8 @@ async def get_api_key(
 ):
     """Get user's API key"""
     
-        try:
-            result = await mongodb_user_service.get_api_key(str(current_user["_id"]))
+    try:
+        result = await mongodb_user_service.get_api_key(str(current_user["_id"]))
         
         return APIKeyResponse(
             success=result["success"],

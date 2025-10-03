@@ -337,10 +337,13 @@ def require_verified_user():
 
 # Credit check dependencies for MongoDB users
 async def get_mongodb_user_with_credits(
-    current_user: Dict[str, Any] = Depends(get_current_user_api_mongodb),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
     request: Request = None
 ) -> Dict[str, Any]:
     """Get MongoDB user and check if they have conversation credits"""
+    
+    # Get current user first
+    current_user = await get_current_user_api_mongodb(credentials, request)
     
     from app.api.middleware.api_usage_middleware import check_api_usage_and_credits
     
