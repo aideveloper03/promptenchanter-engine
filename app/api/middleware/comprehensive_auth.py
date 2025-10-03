@@ -11,6 +11,7 @@ import json
 from app.database.database import get_db_session
 from app.database.models import User, Admin, SupportStaff, UserSession
 from app.services.user_service import user_service
+from app.services.mongodb_user_service import mongodb_user_service
 from app.services.admin_service import admin_service
 from app.services.support_staff_service import support_staff_service
 from app.utils.logger import get_logger
@@ -383,4 +384,82 @@ async def get_user_bypass_rate_limit(
         return None
         
     except Exception:
+        return None
+
+
+# MongoDB-based authentication functions
+
+async def get_current_user_mongodb(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request = None
+) -> Dict[str, Any]:
+    """Get current user from MongoDB using session token"""
+    
+    if not credentials:
+        raise AuthenticationError("Authentication credentials required")
+    
+    token = credentials.credentials
+    
+    # Try session token authentication
+    user = await mongodb_user_service.validate_session(token)
+    
+    if not user:
+        raise AuthenticationError("Invalid or expired session token")
+    
+    # Check if email verification is required
+    if settings.email_verification_enabled and not user.get("is_verified", False):
+        raise AuthenticationError("Email verification required")
+    
+    return user
+
+
+async def get_current_user_api_mongodb(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request = None
+) -> Dict[str, Any]:
+    """Get current user from MongoDB using API key"""
+    
+    if not credentials:
+        raise AuthenticationError("API key required")
+    
+    api_key = credentials.credentials
+    user = await mongodb_user_service.validate_api_key(api_key)
+    
+    if not user:
+        raise AuthenticationError("Invalid API key")
+    
+    # Check if email verification is required for API access
+    if settings.email_verification_enabled and not user.get("is_verified", False):
+        raise AuthenticationError("Email verification required for API access")
+    
+    return user
+
+
+async def get_optional_current_user_mongodb(
+    request: Request
+) -> Optional[Dict[str, Any]]:
+    """Optional MongoDB user authentication - returns None if not authenticated"""
+    
+    try:
+        # Try to get credentials from request header manually
+        auth_header = request.headers.get("authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return None
+        
+        token_or_key = auth_header[7:]  # Remove "Bearer " prefix
+        
+        # Try session token first
+        user = await mongodb_user_service.validate_session(token_or_key)
+        if user:
+            return user
+        
+        # Try API key
+        user = await mongodb_user_service.validate_api_key(token_or_key)
+        if user:
+            return user
+        
+        return None
+        
+    except Exception as e:
+        logger.debug(f"Optional MongoDB authentication failed: {e}")
         return None

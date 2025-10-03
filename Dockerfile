@@ -22,7 +22,8 @@ RUN apt-get update \
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+    && pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir "pymongo[srv]>=4.6.0" motor>=3.3.0
 
 # Copy application code
 COPY . .

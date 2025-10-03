@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     
     # Database Configuration
     database_url: str = Field(default="sqlite+aiosqlite:///./data/promptenchanter2.db", env="DATABASE_URL")
+    mongodb_url: str = Field(default="", env="MONGODB_URL")
+    mongodb_database: str = Field(default="promptenchanter", env="MONGODB_DATABASE")
+    use_mongodb: bool = Field(default=True, env="USE_MONGODB")
     
     # Redis Configuration
     redis_url: str = Field(default="redis://localhost:6379/0", env="REDIS_URL")
@@ -106,13 +109,18 @@ class Settings(BaseSettings):
     message_flush_interval_seconds: int = Field(default=600, env="MESSAGE_FLUSH_INTERVAL_SECONDS")
     message_max_queue_size: int = Field(default=1000, env="MESSAGE_MAX_QUEUE_SIZE")
     
-    # Email Settings (for future email verification)
+    # Email Settings (for email verification)
     smtp_host: str = Field(default="", env="SMTP_HOST")
     smtp_port: int = Field(default=587, env="SMTP_PORT")
     smtp_username: str = Field(default="", env="SMTP_USERNAME")
     smtp_password: str = Field(default="", env="SMTP_PASSWORD")
     smtp_use_tls: bool = Field(default=True, env="SMTP_USE_TLS")
     from_email: str = Field(default="noreply@promptenchanter.com", env="FROM_EMAIL")
+    
+    # Email verification settings
+    email_verification_token_expiry_hours: int = Field(default=24, env="EMAIL_VERIFICATION_TOKEN_EXPIRY_HOURS")
+    email_verification_resend_limit_per_day: int = Field(default=3, env="EMAIL_VERIFICATION_RESEND_LIMIT_PER_DAY")
+    email_verification_otp_length: int = Field(default=6, env="EMAIL_VERIFICATION_OTP_LENGTH")
     
     # API Usage Monitoring
     api_usage_tracking_enabled: bool = Field(default=True, env="API_USAGE_TRACKING_ENABLED")

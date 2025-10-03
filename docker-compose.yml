@@ -8,6 +8,9 @@ services:
     environment:
       - REDIS_URL=redis://redis2:6379/0
       - DATABASE_URL=sqlite+aiosqlite:///./data/promptenchanter2.db
+      - MONGODB_URL=mongodb+srv://aideveloper03690_db_user:c0evekYI3q2EnpuY@cluster0.cptyxpt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+      - MONGODB_DATABASE=promptenchanter
+      - USE_MONGODB=true
     env_file:
       - .env
     depends_on:
