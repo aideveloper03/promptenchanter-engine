@@ -63,6 +63,33 @@ class MongoDBUserService:
         try:
             users_collection = await get_mongodb_collection('users')
             
+            # Double-check for existing user (race condition protection)
+            existing_user = await users_collection.find_one({
+                "$or": [
+                    {"username": username},
+                    {"email": email.lower()}
+                ]
+            })
+            
+            if existing_user:
+                if existing_user["username"] == username:
+                    error_msg = "Username already exists"
+                elif existing_user["email"] == email.lower():
+                    error_msg = "Email already exists"
+                else:
+                    error_msg = "User already exists"
+                
+                await self._log_security_event(
+                    "registration_failed",
+                    ip_address=ip_address,
+                    details={"error": error_msg, "username": username, "email": email}
+                )
+                
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={"message": error_msg}
+                )
+            
             # Hash password
             password_hash = password_manager.hash_password(password)
             

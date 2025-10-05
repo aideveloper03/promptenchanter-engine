@@ -4,7 +4,7 @@ Admin management endpoints for PromptEnchanter
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from app.database.database import get_db_session
 from app.database.models import Admin
@@ -24,14 +24,17 @@ from app.models.user_schemas import (
     ErrorResponse
 )
 from app.services.admin_service import admin_service
+from app.services.mongodb_admin_service import mongodb_admin_service
 from app.services.user_service import user_service
 from app.security.encryption import ip_security_manager
 from app.security.firewall import firewall_manager
 from app.utils.logger import get_logger
 from app.api.middleware.comprehensive_auth import get_current_admin, get_current_super_admin
+from app.config.settings import get_settings
 
 logger = get_logger(__name__)
 security = HTTPBearer()
+settings = get_settings()
 
 router = APIRouter()
 
@@ -41,15 +44,68 @@ router = APIRouter()
 @router.post(
     "/login",
     response_model=AdminLoginResponse,
-    summary="Admin login",
-    description="Authenticate admin user and create session"
+    summary="Admin login (MongoDB Primary)",
+    description="Authenticate admin user using MongoDB and create session"
 )
-async def admin_login(
+async def admin_login_mongodb(
+    request: AdminLoginRequest,
+    http_request: Request
+):
+    """Admin login endpoint using MongoDB"""
+    
+    # Get client info
+    client_ip = ip_security_manager.get_client_ip(http_request)
+    user_agent = http_request.headers.get("User-Agent", "")
+    
+    try:
+        # Use MongoDB admin service for primary authentication
+        result = await mongodb_admin_service.authenticate_admin(
+            username=request.username,
+            password=request.password,
+            ip_address=client_ip,
+            user_agent=user_agent
+        )
+        
+        # Format response to match schema
+        admin_data = result["admin"]
+        return AdminLoginResponse(
+            success=result["success"],
+            message=result["message"],
+            admin={
+                "id": str(admin_data["id"]),
+                "username": admin_data["username"],
+                "name": admin_data["name"],
+                "email": admin_data["email"],
+                "is_super_admin": admin_data["is_super_admin"],
+                "permissions": admin_data["permissions"],
+                "last_login": None  # Can be added if needed
+            },
+            session={
+                "session_token": result["session_token"],
+                "refresh_token": result["session_token"],  # Using same token for now
+                "expires_at": "",  # Can be added if needed
+                "refresh_expires_at": ""  # Can be added if needed
+            }
+        )
+        
+    except HTTPException:
+        # Record failed attempt for potential abuse monitoring
+        await firewall_manager.record_failed_attempt(client_ip, "admin_login_failed")
+        raise
+
+
+@router.post(
+    "/login-legacy",
+    response_model=AdminLoginResponse,
+    summary="Admin login (SQLite Legacy)",
+    description="Authenticate admin user using SQLite and create session"
+)
+async def admin_login_legacy(
     request: AdminLoginRequest,
     http_request: Request,
     session: AsyncSession = Depends(get_db_session)
 ):
-    """Admin login endpoint"""
+    """Admin login endpoint using SQLite (Legacy)"""
     
     # Get client info
     client_ip = ip_security_manager.get_client_ip(http_request)
