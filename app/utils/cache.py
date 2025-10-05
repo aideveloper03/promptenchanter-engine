@@ -49,7 +49,7 @@ class CacheManager:
                 # Fallback to memory cache
                 if key in self._memory_cache:
                     value, expiry = self._memory_cache[key]
-                    if datetime.utcnow() < expiry:
+                    if datetime.now() < expiry:
                         return value
                     else:
                         del self._memory_cache[key]
@@ -70,7 +70,7 @@ class CacheManager:
                 return True
             else:
                 # Fallback to memory cache
-                expiry = datetime.utcnow() + timedelta(seconds=ttl_seconds)
+                expiry = datetime.now() + timedelta(seconds=ttl_seconds)
                 self._memory_cache[key] = (value, expiry)
                 
                 # Simple cleanup of expired items
@@ -95,7 +95,7 @@ class CacheManager:
     
     async def _cleanup_memory_cache(self):
         """Clean up expired items from memory cache"""
-        now = datetime.utcnow()
+        now = datetime.now()
         expired_keys = [
             key for key, (_, expiry) in self._memory_cache.items()
             if now >= expiry
