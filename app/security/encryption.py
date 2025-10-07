@@ -148,10 +148,11 @@ class PasswordManager:
         return pwd_context.needs_update(hashed_password)
     
     @staticmethod
-    def validate_password_strength(password: str) -> Tuple[bool, List[str]]:
+    def validate_password_strength(password: str, username: str = None, email: str = None) -> Tuple[bool, List[str]]:
         """Validate password meets security requirements"""
         errors = []
         
+        # Length requirements
         if len(password) < 8:
             errors.append("Password must be at least 8 characters long")
         
@@ -160,6 +161,7 @@ class PasswordManager:
         if password_bytes > 1024:  # 1KB limit - reasonable for passwords
             errors.append(f"Password is too long ({password_bytes} bytes). Maximum is 1024 bytes")
         
+        # Character type requirements
         if not any(c.isdigit() for c in password):
             errors.append("Password must contain at least 1 number")
         
@@ -169,14 +171,43 @@ class PasswordManager:
         if not any(c.islower() for c in password):
             errors.append("Password must contain at least 1 lowercase letter")
         
+        # Special character requirement (OWASP recommendation)
+        special_chars = "!@#$%^&*()_+-=[]{}|;:,.<>?"
+        if not any(c in special_chars for c in password):
+            errors.append(f"Password must contain at least 1 special character ({special_chars})")
+        
+        # Check for username in password
+        if username and len(username) >= 3:
+            if username.lower() in password.lower():
+                errors.append("Password cannot contain your username")
+        
+        # Check for email in password
+        if email:
+            email_parts = email.lower().split('@')
+            if email_parts[0] and len(email_parts[0]) >= 3:
+                if email_parts[0] in password.lower():
+                    errors.append("Password cannot contain your email address")
+        
         # Check for common weak passwords
         weak_passwords = [
             "password", "123456", "123456789", "qwerty", "abc123",
-            "password123", "admin", "letmein", "welcome", "monkey"
+            "password123", "admin", "letmein", "welcome", "monkey",
+            "12345678", "password1", "1234567890", "111111", "123123",
+            "admin123", "root", "toor", "pass", "test", "guest",
+            "administrator", "1234", "12345", "password!", "password@123"
         ]
         
         if password.lower() in weak_passwords:
             errors.append("Password is too common and easily guessable")
+        
+        # Check for sequential characters
+        sequential_patterns = ["123", "234", "345", "456", "567", "678", "789", 
+                             "abc", "bcd", "cde", "def", "efg", "fgh"]
+        password_lower = password.lower()
+        for pattern in sequential_patterns:
+            if pattern in password_lower or pattern[::-1] in password_lower:
+                errors.append("Password contains sequential characters which are not recommended")
+                break
         
         return len(errors) == 0, errors
 
