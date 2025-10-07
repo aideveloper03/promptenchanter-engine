@@ -159,7 +159,7 @@ async def get_current_user_session(
     session: AsyncSession = Depends(get_db_session),
     request: Request = None
 ) -> User:
-    """Get current user from session token"""
+    """Get current user from session token (email verification NOT required for profile access)"""
     
     if not credentials:
         raise AuthenticationError("Authentication credentials required")
@@ -170,9 +170,8 @@ async def get_current_user_session(
     if not user or not isinstance(user, User):
         raise AuthenticationError("Invalid or expired session token")
     
-    # Check if email verification is required
-    if settings.email_verification_enabled and not user.is_verified:
-        raise AuthenticationError("Email verification required")
+    # Profile access is allowed without email verification
+    # Use get_current_user_verified() dependency for operations requiring verification
     
     return user
 
@@ -182,7 +181,7 @@ async def get_current_user_api(
     session: AsyncSession = Depends(get_db_session),
     request: Request = None
 ) -> User:
-    """Get current user from API key"""
+    """Get current user from API key (email verification NOT required for basic access)"""
     
     if not credentials:
         raise AuthenticationError("API key required")
@@ -193,9 +192,8 @@ async def get_current_user_api(
     if not user:
         raise AuthenticationError("Invalid API key")
     
-    # Check if email verification is required
-    if settings.email_verification_enabled and not user.is_verified:
-        raise AuthenticationError("Email verification required")
+    # Basic API access allowed without email verification
+    # Use get_current_user_api_verified() for operations requiring verification
     
     return user
 
@@ -254,7 +252,7 @@ async def get_current_user_or_admin(
     session: AsyncSession = Depends(get_db_session),
     request: Request = None
 ) -> Union[User, Admin]:
-    """Get current user or admin from session token"""
+    """Get current user or admin from session token (email verification NOT required)"""
     
     if not credentials:
         raise AuthenticationError("Authentication required")
@@ -265,10 +263,8 @@ async def get_current_user_or_admin(
     if not user_or_admin:
         raise AuthenticationError("Invalid or expired session token")
     
-    # Check verification for users
-    if isinstance(user_or_admin, User):
-        if settings.email_verification_enabled and not user_or_admin.is_verified:
-            raise AuthenticationError("Email verification required")
+    # Email verification NOT required for basic access
+    # Admins are always verified by definition
     
     return user_or_admin
 
@@ -323,13 +319,11 @@ def require_permissions(permissions: list):
 
 
 def require_verified_user():
-    """Create a dependency that requires verified user"""
+    """Create a dependency that requires verified user (DEPRECATED - use get_current_user_verified instead)"""
     
     async def verified_user_dependency(
-        current_user: User = Depends(get_current_user_session)
+        current_user: User = Depends(get_current_user_verified)
     ) -> User:
-        if settings.email_verification_enabled and not current_user.is_verified:
-            raise AuthenticationError("Email verification required")
         return current_user
     
     return verified_user_dependency
@@ -416,7 +410,7 @@ async def get_current_user_mongodb(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     request: Request = None
 ) -> Dict[str, Any]:
-    """Get current user from MongoDB using session token"""
+    """Get current user from MongoDB using session token (email verification NOT required for profile access)"""
     
     if not credentials:
         raise AuthenticationError("Authentication credentials required")
@@ -429,9 +423,8 @@ async def get_current_user_mongodb(
     if not user:
         raise AuthenticationError("Invalid or expired session token")
     
-    # Check if email verification is required
-    if settings.email_verification_enabled and not user.get("is_verified", False):
-        raise AuthenticationError("Email verification required")
+    # Profile access is allowed without email verification
+    # Use get_current_user_mongodb_verified() for operations requiring verification
     
     return user
 
@@ -440,7 +433,7 @@ async def get_current_user_api_mongodb(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     request: Request = None
 ) -> Dict[str, Any]:
-    """Get current user from MongoDB using API key with usage tracking"""
+    """Get current user from MongoDB using API key (email verification NOT required for basic access)"""
     
     if not credentials:
         raise AuthenticationError("API key required")
@@ -451,9 +444,8 @@ async def get_current_user_api_mongodb(
     if not user:
         raise AuthenticationError("Invalid API key")
     
-    # Check if email verification is required for API access
-    if settings.email_verification_enabled and not user.get("is_verified", False):
-        raise AuthenticationError("Email verification required for API access")
+    # Email verification NOT required for basic API access
+    # Use get_current_user_api_mongodb_verified() for operations requiring verification
     
     # Check if user account is active
     if not user.get("is_active", True):
@@ -490,3 +482,57 @@ async def get_optional_current_user_mongodb(
     except Exception as e:
         logger.debug(f"Optional MongoDB authentication failed: {e}")
         return None
+
+
+# Verified user dependencies - For operations that REQUIRE email verification
+
+async def get_current_user_verified(
+    current_user: User = Depends(get_current_user_session)
+) -> User:
+    """Get current user and ensure email is verified (SQLite)"""
+    
+    if settings.email_verification_enabled and not current_user.is_verified:
+        raise AuthenticationError(
+            "Email verification required for this operation. Please verify your email address."
+        )
+    
+    return current_user
+
+
+async def get_current_user_api_verified(
+    current_user: User = Depends(get_current_user_api)
+) -> User:
+    """Get current user via API key and ensure email is verified (SQLite)"""
+    
+    if settings.email_verification_enabled and not current_user.is_verified:
+        raise AuthenticationError(
+            "Email verification required for this operation. Please verify your email address."
+        )
+    
+    return current_user
+
+
+async def get_current_user_mongodb_verified(
+    current_user: Dict[str, Any] = Depends(get_current_user_mongodb)
+) -> Dict[str, Any]:
+    """Get current user and ensure email is verified (MongoDB)"""
+    
+    if settings.email_verification_enabled and not current_user.get("is_verified", False):
+        raise AuthenticationError(
+            "Email verification required for this operation. Please verify your email address."
+        )
+    
+    return current_user
+
+
+async def get_current_user_api_mongodb_verified(
+    current_user: Dict[str, Any] = Depends(get_current_user_api_mongodb)
+) -> Dict[str, Any]:
+    """Get current user via API key and ensure email is verified (MongoDB)"""
+    
+    if settings.email_verification_enabled and not current_user.get("is_verified", False):
+        raise AuthenticationError(
+            "Email verification required for this operation. Please verify your email address."
+        )
+    
+    return current_user

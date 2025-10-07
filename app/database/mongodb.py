@@ -23,43 +23,68 @@ class MongoDBManager:
         self.database: Optional[AsyncIOMotorDatabase] = None
         self.collections: Dict[str, AsyncIOMotorCollection] = {}
         
-    async def connect(self) -> bool:
-        """Connect to MongoDB"""
-        try:
-            mongodb_url = getattr(settings, 'mongodb_url', None)
-            mongodb_database = getattr(settings, 'mongodb_database', 'promptenchanter')
-            
-            if not mongodb_url:
-                logger.error("MongoDB URL not configured")
-                return False
-            
-            # Create client with server API version
-            self.client = AsyncIOMotorClient(
-                mongodb_url,
-                server_api=ServerApi('1'),
-                serverSelectionTimeoutMS=5000,  # 5 second timeout
-                maxPoolSize=50,
-                minPoolSize=10
-            )
-            
-            # Test connection
-            await self.client.admin.command('ping')
-            logger.info("Successfully connected to MongoDB!")
-            
-            # Get database
-            self.database = self.client[mongodb_database]
-            
-            # Initialize collections
-            await self._initialize_collections()
-            
-            return True
-            
-        except ServerSelectionTimeoutError as e:
-            logger.error(f"Failed to connect to MongoDB: {e}")
+    async def connect(self, retry_count: int = 3) -> bool:
+        """Connect to MongoDB with retry logic"""
+        
+        mongodb_url = getattr(settings, 'mongodb_url', None)
+        mongodb_database = getattr(settings, 'mongodb_database', 'promptenchanter')
+        
+        if not mongodb_url:
+            logger.error("MongoDB URL not configured")
             return False
-        except Exception as e:
-            logger.error(f"MongoDB connection error: {e}")
-            return False
+        
+        for attempt in range(retry_count):
+            try:
+                # Create client with optimized settings
+                self.client = AsyncIOMotorClient(
+                    mongodb_url,
+                    server_api=ServerApi('1'),
+                    serverSelectionTimeoutMS=10000,  # 10 second timeout
+                    connectTimeoutMS=10000,
+                    socketTimeoutMS=10000,
+                    maxPoolSize=100,  # Increased for better performance
+                    minPoolSize=20,   # Increased for better performance
+                    maxIdleTimeMS=60000,  # Close idle connections after 60s
+                    waitQueueTimeoutMS=10000,
+                    retryWrites=True,  # Retry writes on transient errors
+                    retryReads=True    # Retry reads on transient errors
+                )
+                
+                # Test connection
+                await self.client.admin.command('ping')
+                logger.info(f"Successfully connected to MongoDB! (attempt {attempt + 1})")
+                
+                # Get database
+                self.database = self.client[mongodb_database]
+                
+                # Initialize collections
+                await self._initialize_collections()
+                
+                return True
+                
+            except ServerSelectionTimeoutError as e:
+                logger.error(f"Failed to connect to MongoDB (attempt {attempt + 1}/{retry_count}): {e}")
+                if attempt < retry_count - 1:
+                    wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                    logger.info(f"Retrying MongoDB connection in {wait_time} seconds...")
+                    await asyncio.sleep(wait_time)
+                    continue
+                else:
+                    logger.error("MongoDB connection failed after all retry attempts")
+                    return False
+                    
+            except Exception as e:
+                logger.error(f"MongoDB connection error (attempt {attempt + 1}/{retry_count}): {e}")
+                if attempt < retry_count - 1:
+                    wait_time = 2 ** attempt
+                    logger.info(f"Retrying MongoDB connection in {wait_time} seconds...")
+                    await asyncio.sleep(wait_time)
+                    continue
+                else:
+                    logger.error("MongoDB connection failed after all retry attempts")
+                    return False
+        
+        return False
     
     async def disconnect(self):
         """Disconnect from MongoDB"""
@@ -105,8 +130,9 @@ class MongoDBManager:
             await users.create_index("username", unique=True)
             await users.create_index("email", unique=True)
             await users.create_index("api_key", unique=True)
-            await users.create_index("is_active")
-            await users.create_index("is_verified")
+            await users.create_index([("email", 1), ("is_active", 1)])  # Compound index for login
+            await users.create_index([("api_key", 1), ("is_active", 1)])  # Compound index for API auth
+            await users.create_index([("is_verified", 1), ("is_active", 1)])
             await users.create_index("time_created")
             
             # User sessions indexes
@@ -114,14 +140,15 @@ class MongoDBManager:
             await sessions.create_index("user_id")
             await sessions.create_index("session_token", unique=True)
             await sessions.create_index("refresh_token", unique=True)
-            await sessions.create_index("expires_at")
-            await sessions.create_index("is_active")
+            await sessions.create_index([("session_token", 1), ("is_active", 1)])  # Compound for validation
+            await sessions.create_index([("expires_at", 1), ("is_active", 1)])  # Compound for cleanup
+            await sessions.create_index("expires_at", expireAfterSeconds=0)  # TTL index for auto-cleanup
             
             # Message logs indexes
             messages = self.collections['message_logs']
             await messages.create_index("user_id")
-            await messages.create_index("username")
-            await messages.create_index("email")
+            await messages.create_index([("username", 1), ("timestamp", -1)])  # Compound for user history
+            await messages.create_index([("email", 1), ("timestamp", -1)])
             await messages.create_index("timestamp")
             await messages.create_index("model")
             
@@ -129,37 +156,36 @@ class MongoDBManager:
             admins = self.collections['admins']
             await admins.create_index("username", unique=True)
             await admins.create_index("email", unique=True)
-            await admins.create_index("is_active")
+            await admins.create_index([("is_active", 1), ("is_super_admin", 1)])
             
             # Support staff indexes
             support = self.collections['support_staff']
             await support.create_index("username", unique=True)
             await support.create_index("email", unique=True)
-            await support.create_index("is_active")
+            await support.create_index([("is_active", 1), ("staff_level", 1)])
             
             # Security logs indexes
             security = self.collections['security_logs']
-            await security.create_index("event_type")
-            await security.create_index("user_id")
-            await security.create_index("username")
-            await security.create_index("ip_address")
-            await security.create_index("timestamp")
-            await security.create_index("severity")
+            await security.create_index([("event_type", 1), ("timestamp", -1)])
+            await security.create_index([("user_id", 1), ("timestamp", -1)])
+            await security.create_index([("ip_address", 1), ("timestamp", -1)])
+            await security.create_index([("severity", 1), ("timestamp", -1)])
+            await security.create_index("timestamp")  # For cleanup queries
             
             # API usage logs indexes
             api_usage = self.collections['api_usage_logs']
-            await api_usage.create_index("user_id")
-            await api_usage.create_index("api_key")
-            await api_usage.create_index("endpoint")
+            await api_usage.create_index([("user_id", 1), ("timestamp", -1)])
+            await api_usage.create_index([("api_key", 1), ("timestamp", -1)])
+            await api_usage.create_index([("endpoint", 1), ("timestamp", -1)])
+            await api_usage.create_index([("date", 1), ("user_id", 1)])  # For daily aggregation
             await api_usage.create_index("timestamp")
-            await api_usage.create_index("date")
             
             # Email verification indexes
             email_verification = self.collections['email_verification']
-            await email_verification.create_index("user_id")
-            await email_verification.create_index("email")
-            await email_verification.create_index("otp_code")
-            await email_verification.create_index("expires_at")
+            await email_verification.create_index([("user_id", 1), ("verified", 1)])
+            await email_verification.create_index([("email", 1), ("verified", 1)])
+            await email_verification.create_index([("otp_code", 1), ("expires_at", 1)])
+            await email_verification.create_index("expires_at", expireAfterSeconds=0)  # TTL index
             await email_verification.create_index("created_at")
             
             # System config indexes

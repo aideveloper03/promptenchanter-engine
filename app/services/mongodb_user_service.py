@@ -587,8 +587,12 @@ class MongoDBUserService:
             if existing_user:
                 errors.append("Email already exists")
         
-        # Validate password
-        is_strong, password_errors = password_manager.validate_password_strength(password)
+        # Validate password (with username and email check)
+        is_strong, password_errors = password_manager.validate_password_strength(
+            password, 
+            username=username, 
+            email=email
+        )
         if not is_strong:
             errors.extend(password_errors)
         

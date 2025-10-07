@@ -7,7 +7,7 @@ import smtplib
 import secrets
 import string
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr
@@ -29,6 +29,57 @@ class EmailService:
             settings.smtp_username and 
             settings.smtp_password
         )
+        self._config_validated = False
+        self._config_error = None
+    
+    async def validate_smtp_config(self) -> Tuple[bool, str]:
+        """Validate SMTP configuration before sending emails"""
+        
+        if not self.smtp_configured:
+            return False, "SMTP not configured. Missing: host, username, or password"
+        
+        # Return cached result if already validated
+        if self._config_validated:
+            return True, "SMTP configured correctly"
+        
+        if self._config_error:
+            return False, self._config_error
+        
+        try:
+            import asyncio
+            loop = asyncio.get_event_loop()
+            
+            def test_smtp():
+                try:
+                    if settings.smtp_use_tls:
+                        server = smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10)
+                        server.starttls()
+                    else:
+                        server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=10)
+                    
+                    server.login(settings.smtp_username, settings.smtp_password)
+                    server.quit()
+                    return True, "SMTP configured correctly"
+                except smtplib.SMTPAuthenticationError as e:
+                    return False, f"SMTP authentication failed: {str(e)}. Check username/password"
+                except smtplib.SMTPConnectError as e:
+                    return False, f"SMTP connection failed: {str(e)}. Check host/port"
+                except Exception as e:
+                    return False, f"SMTP configuration error: {str(e)}"
+            
+            success, message = await loop.run_in_executor(None, test_smtp)
+            
+            if success:
+                self._config_validated = True
+            else:
+                self._config_error = message
+            
+            return success, message
+            
+        except Exception as e:
+            error_msg = f"SMTP validation error: {str(e)}"
+            self._config_error = error_msg
+            return False, error_msg
     
     async def send_verification_email(self, user_id: str, email: str, name: str) -> Dict[str, Any]:
         """Send email verification with OTP"""
@@ -37,11 +88,21 @@ class EmailService:
             logger.info("Email verification is disabled, skipping email send")
             return {"success": True, "message": "Email verification is disabled"}
         
+        # Validate SMTP configuration
         if not self.smtp_configured:
             logger.warning("SMTP not configured properly. Missing: host=%s, username=%s, password=%s", 
                          bool(settings.smtp_host), bool(settings.smtp_username), bool(settings.smtp_password))
             # Return success but log the issue - don't fail registration due to email config
             return {"success": True, "message": "Email service not configured, verification skipped"}
+        
+        # Test SMTP connection before attempting to send
+        config_valid, config_message = await self.validate_smtp_config()
+        if not config_valid:
+            logger.error(f"SMTP configuration invalid: {config_message}")
+            return {
+                "success": False, 
+                "message": f"Email service configuration error: {config_message}"
+            }
         
         try:
             # Generate OTP
@@ -369,48 +430,70 @@ class EmailService:
             logger.error(f"Failed to send email to {to_email}: {e}")
             return False
     
-    def _send_smtp_email(self, msg: MIMEMultipart, to_email: str) -> bool:
-        """Send email via SMTP (blocking operation)"""
+    def _send_smtp_email(self, msg: MIMEMultipart, to_email: str, retry_count: int = 3) -> bool:
+        """Send email via SMTP with retry logic (blocking operation)"""
         
-        try:
-            # Create SMTP connection with timeout
-            if settings.smtp_use_tls:
-                server = smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=30)
-                server.starttls()
-            else:
-                server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=30)
-            
-            # Enable debug mode for better error tracking
-            server.set_debuglevel(0)  # Set to 1 for debug output
-            
-            # Login with better error handling
+        for attempt in range(retry_count):
             try:
-                server.login(settings.smtp_username, settings.smtp_password)
-            except smtplib.SMTPAuthenticationError as auth_error:
-                logger.error(f"SMTP Authentication failed for {settings.smtp_username}: {auth_error}")
-                logger.error("Please check your email credentials and app password settings")
+                # Create SMTP connection with timeout
+                if settings.smtp_use_tls:
+                    server = smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=30)
+                    server.starttls()
+                else:
+                    server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=30)
+                
+                # Enable debug mode if DEBUG is true in settings
+                debug_level = 1 if settings.debug else 0
+                server.set_debuglevel(debug_level)
+                
+                # Login with better error handling
+                try:
+                    server.login(settings.smtp_username, settings.smtp_password)
+                except smtplib.SMTPAuthenticationError as auth_error:
+                    logger.error(f"SMTP Authentication failed for {settings.smtp_username}: {auth_error}")
+                    logger.error("Please check your email credentials and app password settings")
+                    server.quit()
+                    return False  # Don't retry auth failures
+                except smtplib.SMTPException as smtp_error:
+                    logger.error(f"SMTP error during login: {smtp_error}")
+                    server.quit()
+                    return False  # Don't retry protocol errors
+                
+                # Send email
+                server.send_message(msg, to_addrs=[to_email])
                 server.quit()
+                
+                logger.info(f"Email sent successfully to {to_email} on attempt {attempt + 1}")
+                return True
+                
+            except smtplib.SMTPConnectError as e:
+                logger.error(f"Failed to connect to SMTP server {settings.smtp_host}:{settings.smtp_port}: {e}")
+                if attempt < retry_count - 1:
+                    logger.info(f"Retrying email send... (attempt {attempt + 2}/{retry_count})")
+                    import time
+                    time.sleep(2 ** attempt)  # Exponential backoff: 1s, 2s, 4s
+                    continue
                 return False
-            except smtplib.SMTPException as smtp_error:
-                logger.error(f"SMTP error during login: {smtp_error}")
-                server.quit()
+                
+            except smtplib.SMTPServerDisconnected as e:
+                logger.error(f"SMTP server disconnected unexpectedly: {e}")
+                if attempt < retry_count - 1:
+                    logger.info(f"Retrying email send... (attempt {attempt + 2}/{retry_count})")
+                    import time
+                    time.sleep(2 ** attempt)
+                    continue
                 return False
-            
-            # Send email
-            server.send_message(msg, to_addrs=[to_email])
-            server.quit()
-            
-            return True
-            
-        except smtplib.SMTPConnectError as e:
-            logger.error(f"Failed to connect to SMTP server {settings.smtp_host}:{settings.smtp_port}: {e}")
-            return False
-        except smtplib.SMTPServerDisconnected as e:
-            logger.error(f"SMTP server disconnected unexpectedly: {e}")
-            return False
-        except Exception as e:
-            logger.error(f"SMTP error sending to {to_email}: {e}")
-            return False
+                
+            except Exception as e:
+                logger.error(f"SMTP error sending to {to_email}: {e}")
+                if attempt < retry_count - 1:
+                    logger.info(f"Retrying email send... (attempt {attempt + 2}/{retry_count})")
+                    import time
+                    time.sleep(2 ** attempt)
+                    continue
+                return False
+        
+        return False
 
 
 # Global email service instance

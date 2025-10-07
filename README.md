@@ -473,11 +473,55 @@ For support and questions:
 
 ## 📚 Documentation
 
-- **[User Management Guide](docs/USER_MANAGEMENT_GUIDE.md)** - Comprehensive guide to the user management system
-- **[API Guide](docs/API_GUIDE.md)** - Detailed API documentation
-- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Production deployment instructions
+### Core Documentation
+- **[Complete Documentation](COMPLETE_DOCUMENTATION.md)** - Comprehensive project documentation (NEW ✨)
+- **[Email Setup Guide](EMAIL_SETUP_GUIDE.md)** - Complete SMTP configuration guide (NEW ✨)
+- **[API Documentation](API_DOCUMENTATION.md)** - Detailed API reference
+- **[Implementation Summary](IMPLEMENTATION_SUMMARY.md)** - Recent improvements and changes (NEW ✨)
 
-## 🆕 What's New in v2.0.0
+### Technical Documentation
+- **[Architecture Analysis](COMPREHENSIVE_ANALYSIS.md)** - Deep dive into system architecture (NEW ✨)
+- **[Implementation Report](IMPLEMENTATION_REPORT.md)** - Detailed implementation notes
+
+## 🆕 What's New in v2.1.0 (Latest)
+
+### Major Improvements (October 2025)
+- **✅ Profile Access Without Verification** - Users can now access profiles without email verification (as designed)
+- **✅ Enhanced Email System** - SMTP validation, retry logic, support for Gmail/SendGrid/SES/Mailgun
+- **✅ Improved Security** - Enhanced password validation with special character, username, and email checks
+- **✅ Database Optimization** - Compound indexes, TTL cleanup, optimized connection pooling (100/20)
+- **✅ Complete Documentation** - Comprehensive guides for setup, email configuration, and deployment
+
+### Email Verification Features
+- **Optional Email Verification** - Can be enabled/disabled via configuration
+- **Profile Access** - Always accessible, even without verification
+- **SMTP Configuration Validation** - Pre-flight checks before sending
+- **Retry Logic** - 3 attempts with exponential backoff
+- **Multiple Providers** - Full support for Gmail, SendGrid, SES, Mailgun
+
+### Security Enhancements
+- **Enhanced Password Requirements**:
+  - Special character requirement (NEW)
+  - Username check (cannot contain username)
+  - Email check (cannot contain email)
+  - Sequential pattern detection
+  - Expanded weak password blacklist
+- **Argon2id Hashing** - Industry-standard memory-hard hashing
+- **Session Security** - Secure token management with expiration
+
+### Performance Optimizations
+- **MongoDB Connection Pooling** - Optimized (100 max, 20 min connections)
+- **Compound Indexes** - Better query performance
+- **TTL Indexes** - Automatic cleanup of expired records
+- **Email Retry** - Exponential backoff for reliability
+
+### Documentation
+- **[Complete Documentation](COMPLETE_DOCUMENTATION.md)** - Everything you need to know
+- **[Email Setup Guide](EMAIL_SETUP_GUIDE.md)** - Step-by-step SMTP configuration
+- **[Architecture Analysis](COMPREHENSIVE_ANALYSIS.md)** - Deep technical insights
+- **[Implementation Summary](IMPLEMENTATION_SUMMARY.md)** - All recent changes
+
+## 🔄 What's New in v2.0.0
 
 ### User Management System
 - **Complete user registration and authentication system**
@@ -491,7 +535,7 @@ For support and questions:
 - **Comprehensive user profile management**
 - **Account deletion with data archiving**
 
-### Security Enhancements
+### Security Features
 - **Advanced firewall with IP-based blocking and whitelisting**
 - **Data encryption for sensitive information**
 - **Failed attempt tracking and account lockouts**
