@@ -1,0 +1,154 @@
+# Production Docker Compose Configuration with SSL/HTTPS Support
+# This configuration includes Certbot for automated SSL certificate management
+# 
+# Usage:
+#   1. Set your domain in .env file (DOMAIN=yourdomain.com)
+#   2. Set your email for Let's Encrypt in .env (CERTBOT_EMAIL=your@email.com)
+#   3. Run: docker-compose -f docker-compose.production.yml up -d
+#
+# Note: Initial setup requires running the init-letsencrypt.sh script first
+
+version: '3.8'
+
+services:
+  # Main application service
+  promptenchanter2:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: promptenchanter_app
+    restart: always
+    environment:
+      - REDIS_URL=redis://redis2:6379/0
+      - DATABASE_URL=sqlite+aiosqlite:///./data/promptenchanter2.db
+      - MONGODB_URL=mongodb+srv://aideveloper03690_db_user:c0evekYI3q2EnpuY@cluster0.cptyxpt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+      - MONGODB_DATABASE=promptenchanter
+      - USE_MONGODB=true
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+    env_file:
+      - .env
+    depends_on:
+      redis2:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    networks:
+      - promptenchanter2-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # Redis service for caching and session management
+  redis2:
+    image: redis:7-alpine
+    container_name: promptenchanter_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data2:/data
+    networks:
+      - promptenchanter2-network
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Nginx reverse proxy with SSL support
+  nginx2:
+    image: nginx:alpine
+    container_name: promptenchanter_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - ./nginx/cache:/var/cache/nginx
+    depends_on:
+      promptenchanter2:
+        condition: service_healthy
+    networks:
+      - promptenchanter2-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Certbot for SSL certificate management
+  certbot:
+    image: certbot/certbot
+    container_name: promptenchanter_certbot
+    restart: unless-stopped
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/logs:/var/log/letsencrypt
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot --webroot-path=/var/www/certbot --quiet; sleep 12h & wait $${!}; done;'"
+    depends_on:
+      - nginx2
+    networks:
+      - promptenchanter2-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+volumes:
+  redis_data2:
+    driver: local
+
+networks:
+  promptenchanter2-network:
+    driver: bridge
