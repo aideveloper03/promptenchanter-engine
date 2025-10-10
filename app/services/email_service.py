@@ -180,19 +180,6 @@ class EmailService:
         """Verify email using OTP code"""
         
         try:
-            # Validate OTP format
-            if not otp_code or not otp_code.isdigit():
-                return {
-                    "success": False,
-                    "message": "Invalid OTP format. OTP must be numeric."
-                }
-            
-            if len(otp_code) != settings.email_verification_otp_length:
-                return {
-                    "success": False,
-                    "message": f"Invalid OTP length. Expected {settings.email_verification_otp_length} digits."
-                }
-            
             verification_collection = await get_mongodb_collection('email_verification')
             
             # Find active verification record
@@ -204,29 +191,9 @@ class EmailService:
             })
             
             if not verification_doc:
-                # Check if already verified
-                verified_doc = await verification_collection.find_one({
-                    "user_id": user_id,
-                    "email": email,
-                    "verified": True
-                })
-                
-                if verified_doc:
-                    return {
-                        "success": False,
-                        "message": "Email is already verified"
-                    }
-                
                 return {
                     "success": False,
-                    "message": "No valid verification request found or OTP expired. Please request a new OTP."
-                }
-            
-            # Check if too many attempts (before incrementing)
-            if verification_doc.get("attempts", 0) >= 5:
-                return {
-                    "success": False,
-                    "message": "Too many verification attempts. Please request a new OTP."
+                    "message": "No valid verification request found or OTP expired"
                 }
             
             # Increment attempts
@@ -235,12 +202,18 @@ class EmailService:
                 {"$inc": {"attempts": 1}}
             )
             
-            # Verify OTP (use constant-time comparison for security)
-            if verification_doc["otp_code"] != otp_code:
-                attempts_remaining = 5 - verification_doc.get("attempts", 0) - 1
+            # Check if too many attempts
+            if verification_doc["attempts"] >= 5:
                 return {
                     "success": False,
-                    "message": f"Invalid OTP code. {attempts_remaining} attempts remaining."
+                    "message": "Too many verification attempts. Please request a new OTP."
+                }
+            
+            # Verify OTP
+            if verification_doc["otp_code"] != otp_code:
+                return {
+                    "success": False,
+                    "message": "Invalid OTP code"
                 }
             
             # Mark as verified
@@ -251,13 +224,10 @@ class EmailService:
             
             # Update user verification status
             users_collection = await get_mongodb_collection('users')
-            result = await users_collection.update_one(
+            await users_collection.update_one(
                 {"_id": user_id},
                 {"$set": {"is_verified": True, "updated_at": datetime.now()}}
             )
-            
-            if result.modified_count == 0:
-                logger.warning(f"User {user_id} verification status not updated - may already be verified")
             
             logger.info(f"Email verified successfully for user {user_id}")
             
@@ -268,10 +238,7 @@ class EmailService:
             
         except Exception as e:
             logger.error(f"Email verification failed for user {user_id}: {e}")
-            return {
-                "success": False, 
-                "message": "Email verification failed due to server error"
-            }
+            return {"success": False, "message": "Email verification failed"}
     
     async def resend_verification_email(self, user_id: str, email: str, name: str) -> Dict[str, Any]:
         """Resend verification email with rate limiting"""
