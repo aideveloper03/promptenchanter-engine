@@ -141,6 +141,11 @@ class Settings(BaseSettings):
     log_max_size_mb: int = Field(default=100, env="LOG_MAX_SIZE_MB")
     log_backup_count: int = Field(default=5, env="LOG_BACKUP_COUNT")
     
+    # SSL/HTTPS Configuration
+    domain: str = Field(default="localhost", env="DOMAIN")
+    certbot_email: str = Field(default="", env="CERTBOT_EMAIL")
+    redis_password: str = Field(default="changeme", env="REDIS_PASSWORD")
+    
     # Model Mapping
     level_model_mapping: Dict[str, str] = {
         "low": "gpt-4o-mini",

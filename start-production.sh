@@ -58,8 +58,20 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
-# Load environment variables
-source .env
+# Load environment variables using a safe method that handles JSON values
+set -a
+while IFS='=' read -r key value; do
+    # Skip comments and empty lines
+    if [[ ! "$key" =~ ^[[:space:]]*# ]] && [[ -n "$key" ]]; then
+        # Remove leading/trailing whitespace from key
+        key=$(echo "$key" | xargs)
+        # Only export if it's a valid variable name
+        if [[ "$key" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+            export "$key=$value"
+        fi
+    fi
+done < .env
+set +a
 
 # Check required variables
 REQUIRED_VARS=("DOMAIN" "CERTBOT_EMAIL" "SECRET_KEY" "MONGODB_URL")
