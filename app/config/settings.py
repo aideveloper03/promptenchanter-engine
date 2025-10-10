@@ -122,6 +122,11 @@ class Settings(BaseSettings):
     email_verification_resend_limit_per_day: int = Field(default=3, env="EMAIL_VERIFICATION_RESEND_LIMIT_PER_DAY")
     email_verification_otp_length: int = Field(default=6, env="EMAIL_VERIFICATION_OTP_LENGTH")
     
+    # SSL/HTTPS Configuration
+    domain: str = Field(default="localhost", env="DOMAIN")
+    certbot_email: str = Field(default="", env="CERTBOT_EMAIL")
+    redis_password: str = Field(default="changeme", env="REDIS_PASSWORD")
+    
     # API Usage Monitoring
     api_usage_tracking_enabled: bool = Field(default=True, env="API_USAGE_TRACKING_ENABLED")
     daily_usage_reset_hour: int = Field(default=0, env="DAILY_USAGE_RESET_HOUR")  # UTC hour for daily reset
